@@ -3,30 +3,21 @@ defineProps({
   type: { type: String, default: 'button' },
   variant: { type: String, default: 'primary' },
 })
+
+const variantClasses = {
+  primary: 'bg-brand text-white hover:bg-brand-dark',
+  secondary: 'border border-border bg-surface text-ink hover:bg-background',
+  danger: 'bg-danger text-white hover:bg-red-800',
+  ghost: 'text-muted hover:bg-background hover:text-ink',
+}
 </script>
 
 <template>
-  <button :type="type" class="base-button" :class="`base-button--${variant}`">
+  <button
+    :type="type"
+    class="inline-flex min-h-10 items-center justify-center gap-2 rounded-sm px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50"
+    :class="variantClasses[variant] || variantClasses.primary"
+  >
     <slot />
   </button>
 </template>
-
-<style scoped>
-.base-button {
-  border: 0;
-  border-radius: var(--radius-sm);
-  padding: 0.625rem 1rem;
-  cursor: pointer;
-}
-
-.base-button--primary {
-  color: white;
-  background: var(--color-brand);
-}
-
-.base-button--secondary {
-  color: var(--color-ink);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-}
-</style>
