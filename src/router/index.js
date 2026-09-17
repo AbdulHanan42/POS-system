@@ -16,6 +16,7 @@ const router = createRouter({
       { path: '/menu/products/:id', component: () => import('../views/menu/ProductDetails.vue') },
     { path: '/kitchen', component: () => import('../views/kitchen/Kitchen.vue') },
     { path: '/customers', component: () => import('../views/customers/Customers.vue') },
+    { path: '/customers/:id', component: () => import('../views/customers/CustomerDetails.vue') },
     { path: '/inventory', component: () => import('../views/inventory/Inventory.vue') },
     { path: '/purchases', component: () => import('../views/purchases/Purchases.vue') },
     { path: '/reports', component: () => import('../views/reports/SalesReport.vue') },
