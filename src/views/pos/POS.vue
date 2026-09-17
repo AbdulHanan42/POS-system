@@ -18,7 +18,14 @@ const cart = useCartStore()
         <ProductCard v-for="product in products" :key="product.id" :product="product" @add="cart.addItem" />
       </div>
     </div>
-    <Cart :items="cart.items" />
+    <Cart
+      :items="cart.items"
+      :subtotal="cart.total"
+      @increment="cart.addItem"
+      @decrement="cart.decreaseItem"
+      @remove="cart.removeItem"
+      @clear="cart.clear"
+    />
   </section>
 </template>
 
@@ -37,5 +44,15 @@ const cart = useCartStore()
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 820px) {
+  .pos-page {
+    grid-template-columns: 1fr;
+  }
+
+  .products {
+    padding: 1.25rem;
+  }
 }
 </style>
