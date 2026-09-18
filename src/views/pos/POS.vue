@@ -9,8 +9,10 @@ import ReceiptModal from "../../components/pos/ReceiptModal.vue";
 import SearchProduct from "../../components/pos/SearchProduct.vue";
 import products from "../../data/products.js";
 import { useCartStore } from "../../stores/cart.js";
+import { useOrderStore } from "../../stores/order.js";
 
 const cart = useCartStore();
+const orders = useOrderStore();
 const search = ref("");
 const activeCategory = ref("All");
 const orderType = ref("Dine in");
@@ -34,6 +36,16 @@ const filteredProducts = computed(() =>
 const discountedTotal = computed(() => Math.max(0, cart.total - discount.value) * 1.1);
 
 function completePayment(paymentDetails) {
+  orders.addOrder({
+    createdAt: new Date().toISOString(),
+    status: "paid",
+    type: orderType.value,
+    table: orderType.value === "Dine in" ? table.value : "",
+    customer: "Walk-in customer",
+    paymentMethod: paymentDetails.method,
+    total: discountedTotal.value,
+    items: cart.items.map(({ name, quantity, price }) => ({ name, quantity, price })),
+  });
   notice.value = `Payment received via ${paymentDetails.method}. ${orderType.value} order is complete.`;
   payment.value = paymentDetails;
   showPayment.value = false;
