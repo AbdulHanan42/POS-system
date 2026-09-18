@@ -10,5 +10,9 @@ export const useOrderStore = defineStore('order', {
     addOrder(order) {
       this.orders.unshift({ ...order, id: order.id || String(Date.now()) })
     },
+    updateStatus(id, status) {
+      const order = this.orders.find((item) => item.id === id)
+      if (order) order.status = status
+    },
   },
 })
