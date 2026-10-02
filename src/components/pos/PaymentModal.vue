@@ -2,7 +2,12 @@
 import { ref, watch } from 'vue'
 import BaseModal from '../common/BaseModal.vue'
 
-const props = defineProps({ open: Boolean, total: { type: Number, default: 0 } })
+const props = defineProps({
+  open: Boolean,
+  total: { type: Number, default: 0 },
+  error: { type: String, default: '' },
+  submitting: Boolean,
+})
 const emit = defineEmits(['close', 'paid', 'edit', 'print'])
 const method = ref('Cash')
 const received = ref('')
@@ -27,7 +32,8 @@ function completePayment() {
       <div class="mt-6 rounded-lg bg-background p-4 text-center"><span class="text-xs text-muted">Amount due</span><strong class="mt-1 block text-3xl text-brand-dark">${{ total.toFixed(2) }}</strong></div>
       <div class="mt-5"><p class="text-sm font-semibold text-ink">Payment method</p><div class="mt-2 grid grid-cols-3 gap-2"><button v-for="item in methods" :key="item" type="button" class="rounded-sm border px-2 py-3 text-xs font-semibold" :class="method === item ? 'border-brand bg-orange-50 text-brand' : 'border-border text-muted'" @click="method = item">{{ item }}</button></div></div>
       <label v-if="method === 'Cash'" class="mt-5 grid gap-2 text-sm font-semibold text-ink">Amount received<input v-model="received" type="number" min="0" step="0.01" class="h-10 rounded-sm border border-border px-3 font-normal outline-none focus:border-brand" placeholder="0.00" /></label>
-      <div class="mt-6 flex flex-wrap justify-end gap-2"><button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold text-muted hover:bg-background" @click="emit('edit')">Edit bill</button><button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold text-muted hover:bg-background" @click="emit('print')">Print bill</button><button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold text-muted hover:bg-background" @click="emit('close')">Cancel</button><button type="button" class="rounded-sm bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50" :disabled="method === 'Cash' && Number(received) < total" @click="completePayment">Complete payment</button></div>
+      <p v-if="error" role="alert" class="mt-4 text-sm text-danger">{{ error }}</p>
+      <div class="mt-6 flex flex-wrap justify-end gap-2"><button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold text-muted hover:bg-background" :disabled="submitting" @click="emit('edit')">Edit bill</button><button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold text-muted hover:bg-background" :disabled="submitting" @click="emit('print')">Print bill</button><button type="button" class="rounded-sm px-4 py-2 text-sm font-semibold text-muted hover:bg-background" :disabled="submitting" @click="emit('close')">Cancel</button><button type="button" class="rounded-sm bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50" :disabled="submitting || (method === 'Cash' && Number(received) < total)" @click="completePayment">{{ submitting ? 'Saving order...' : 'Complete payment' }}</button></div>
     </div>
   </BaseModal>
 </template>

@@ -22,6 +22,9 @@ const discount = ref(0);
 const showPayment = ref(false);
 const showReceipt = ref(false);
 const notice = ref("");
+const orderError = ref("");
+const submittingOrder = ref(false);
+const savedOrderId = ref(null);
 const payment = ref({ method: "", received: 0, change: 0 });
 const categories = computed(() => ["All", ...productStore.categories]);
 
@@ -36,24 +39,33 @@ const filteredProducts = computed(() =>
 );
 const discountedTotal = computed(() => Math.max(0, cart.total - discount.value) * 1.1);
 
-function completePayment(paymentDetails) {
-  orders.addOrder({
-    createdAt: new Date().toISOString(),
-    status: "paid",
-    type: orderType.value,
-    table: orderType.value === "Dine in" ? table.value : "",
-    customer: "Walk-in customer",
-    paymentMethod: paymentDetails.method,
-    total: discountedTotal.value,
-    items: cart.items.map(({ name, quantity, price }) => ({ name, quantity, price })),
-  });
-  notice.value = `Payment received via ${paymentDetails.method}. ${orderType.value} order is complete.`;
-  payment.value = paymentDetails;
-  showPayment.value = false;
-  showReceipt.value = true;
-  window.setTimeout(() => {
-    notice.value = "";
-  }, 4000);
+async function completePayment(paymentDetails) {
+  orderError.value = "";
+  submittingOrder.value = true;
+  try {
+    const order = await orders.addOrder({
+      createdAt: new Date().toISOString(),
+      status: "paid",
+      type: orderType.value,
+      table: orderType.value === "Dine in" ? table.value : "",
+      customer: "Walk-in customer",
+      paymentMethod: paymentDetails.method,
+      total: discountedTotal.value,
+      items: cart.items.map(({ name, quantity, price, selectedSize }) => ({ name, quantity, price, selectedSize })),
+    });
+    savedOrderId.value = order.id;
+    notice.value = `Order #${order.id} saved. Payment received via ${paymentDetails.method}.`;
+    payment.value = paymentDetails;
+    showPayment.value = false;
+    showReceipt.value = true;
+    window.setTimeout(() => {
+      notice.value = "";
+    }, 4000);
+  } catch (error) {
+    orderError.value = error.message || "Could not save the order. Please try again.";
+  } finally {
+    submittingOrder.value = false;
+  }
 }
 
 function editBill() {
@@ -68,6 +80,7 @@ function previewBill() {
 
 function finishOrder() {
   showReceipt.value = false;
+  savedOrderId.value = null;
   cart.clear();
   discount.value = 0;
   notice.value = "";
@@ -114,6 +127,7 @@ function finishOrder() {
     >
       {{ notice }}
     </p>
+    <p v-if="productStore.error" role="alert" class="mx-5 mt-4 rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger lg:mx-8">Could not load products: {{ productStore.error }}</p>
     <div class="grid lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div class="min-w-0 px-5 py-6 lg:px-8">
         <div class="flex flex-col gap-3 sm:flex-row">
@@ -165,6 +179,8 @@ function finishOrder() {
     <PaymentModal
       :open="showPayment"
       :total="discountedTotal"
+      :error="orderError"
+      :submitting="submittingOrder"
       @close="showPayment = false"
       @edit="editBill"
       @print="previewBill"
@@ -182,6 +198,7 @@ function finishOrder() {
       :received="payment.received"
       :change="payment.change"
       :payment-method="payment.method"
+      :order-id="savedOrderId"
       @close="showReceipt = false"
       @edit="editBill"
       @pay="showPayment = true"

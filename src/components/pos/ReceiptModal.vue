@@ -14,6 +14,7 @@ const props = defineProps({
   received: { type: Number, default: 0 },
   change: { type: Number, default: 0 },
   paymentMethod: { type: String, default: '' },
+  orderId: { type: [Number, String], default: '—' },
 })
 
 const emit = defineEmits(['close', 'edit', 'pay', 'save'])
@@ -28,7 +29,7 @@ function printReceipt() {
   <BaseModal :open="open">
     <div class="receipt-card max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-surface p-6 shadow-xl">
       <div class="flex items-start justify-between gap-4">
-        <div><p class="text-xs font-bold uppercase tracking-[0.16em] text-brand">{{ paid ? 'Paid receipt' : 'Bill receipt' }}</p><h2 class="mt-1 text-xl font-bold text-ink">Order #001</h2><p class="mt-1 text-xs text-muted">{{ orderType }}<span v-if="table"> · {{ table }}</span></p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[0.16em] text-brand">{{ paid ? 'Paid receipt' : 'Bill receipt' }}</p><h2 class="mt-1 text-xl font-bold text-ink">Order #{{ orderId ?? '—' }}</h2><p class="mt-1 text-xs text-muted">{{ orderType }}<span v-if="table"> · {{ table }}</span></p></div>
         <button type="button" class="text-xl text-muted hover:text-ink" aria-label="Close receipt" @click="emit('close')">&times;</button>
       </div>
       <div class="my-5 border-y border-dashed border-border py-4"><div v-for="item in items" :key="item.itemKey" class="flex justify-between gap-4 py-1.5 text-sm"><span>{{ item.quantity }} x {{ item.name }}<small v-if="item.selectedSize" class="ml-1 text-muted">({{ item.selectedSize }})</small></span><strong>{{ formatCurrency(item.price * item.quantity) }}</strong></div></div>

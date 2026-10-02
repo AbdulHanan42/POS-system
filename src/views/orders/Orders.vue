@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import BaseButton from '../../components/common/BaseButton.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
 import { useOrderStore } from '../../stores/order.js'
@@ -11,8 +11,17 @@ const channel = ref('all')
 const period = ref('all')
 const selectedOrder = ref(null)
 const refundCandidate = ref(null)
+const orderError = ref('')
 const page = ref(1)
 const pageSize = 6
+
+onMounted(async () => {
+	try {
+		await orderStore.loadOrders()
+	} catch (error) {
+		orderError.value = error.message
+	}
+})
 
 const formatCurrency = (value) => `$${Number(value).toFixed(2)}`
 const formatDate = (date) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(date))
@@ -47,10 +56,15 @@ function resetPage() { page.value = 1 }
 function clearFilters() { search.value = ''; status.value = 'all'; channel.value = 'all'; period.value = 'all'; resetPage() }
 function openOrder(order) { selectedOrder.value = order }
 function requestRefund(order) { refundCandidate.value = order }
-function refundOrder() {
-	orderStore.updateStatus(refundCandidate.value.id, 'refunded')
-	if (selectedOrder.value?.id === refundCandidate.value.id) selectedOrder.value = orderStore.orders.find((order) => order.id === refundCandidate.value.id)
-	refundCandidate.value = null
+async function refundOrder() {
+	orderError.value = ''
+	try {
+		const updated = await orderStore.updateStatus(refundCandidate.value.id, 'refunded')
+		if (selectedOrder.value?.id === updated.id) selectedOrder.value = updated
+		refundCandidate.value = null
+	} catch (error) {
+		orderError.value = error.message
+	}
 }
 function printOrder() { window.print() }
 </script>
@@ -61,6 +75,8 @@ function printOrder() { window.print() }
 			<div><p class="eyebrow">Revenue control</p><h1>Orders</h1><p class="muted">Track every ticket from the counter to payment.</p></div>
 			<div class="header-actions"><span class="register-status"><i></i> Register open</span><RouterLink class="primary-action" to="/pos">New order <span aria-hidden="true">-&gt;</span></RouterLink></div>
 		</header>
+		<p v-if="orderError" role="alert" class="mb-4 rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger">{{ orderError }}</p>
+		<p v-if="orderStore.loading" role="status" class="mb-4 text-sm text-muted">Loading orders...</p>
 
 		<div class="summary-grid">
 			<article><span class="summary-label">All orders</span><strong>{{ orderStore.orders.length }}</strong><small>Across all channels</small></article>

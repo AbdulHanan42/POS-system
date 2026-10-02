@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCustomerStore } from '../../stores/customer.js'
 import { useOrderStore } from '../../stores/order.js'
@@ -10,6 +10,7 @@ const customerStore = useCustomerStore()
 const orderStore = useOrderStore()
 const productStore = useProductStore()
 const tableStore = useTableStore()
+const orderError = ref('')
 const range = ref('today')
 const ranges = { today: 1, week: 7, month: 30 }
 
@@ -48,6 +49,14 @@ const relativeTime = (date) => {
   const minutes = Math.max(1, Math.round((Date.now() - new Date(date).getTime()) / 60000))
   return minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} hr ago`
 }
+
+onMounted(async () => {
+  try {
+    await orderStore.loadOrders()
+  } catch (error) {
+    orderError.value = error.message
+  }
+})
 </script>
 
 <template>
@@ -63,6 +72,8 @@ const relativeTime = (date) => {
       <article class="metric-card"><span class="metric-label">Average order</span><strong>{{ formatCurrency(averageOrder) }}</strong><span class="metric-note">Across paid orders</span></article>
       <article class="metric-card"><span class="metric-label">Tables occupied</span><strong>{{ occupiedTables }}<small> / {{ tableStore.items.length }}</small></strong><RouterLink class="metric-link" to="/tables">View floor plan</RouterLink></article>
     </div>
+
+    <p v-if="orderError" role="alert" class="alert-bar">Could not load order data: {{ orderError }}</p>
 
     <div v-if="lowStockProducts.length" class="alert-bar"><strong>Inventory attention</strong><span>{{ lowStockProducts.length }} menu item{{ lowStockProducts.length === 1 ? '' : 's' }} marked inactive.</span><RouterLink to="/inventory">Review inventory -&gt;</RouterLink></div>
 
