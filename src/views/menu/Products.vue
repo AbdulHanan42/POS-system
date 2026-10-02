@@ -22,9 +22,13 @@ const filteredProducts = computed(() => productStore.items.filter((product) => {
 	return matchesSearch && matchesCategory && matchesStatus
 }))
 
-function deleteProduct() {
-	productStore.deleteProduct(productToDelete.value.id)
-	productToDelete.value = null
+async function deleteProduct() {
+	try {
+		await productStore.deleteProduct(productToDelete.value.id)
+		productToDelete.value = null
+	} catch {
+		// Keep the dialog open so the user can retry.
+	}
 }
 </script>
 
@@ -37,6 +41,7 @@ function deleteProduct() {
 			</header>
 			<div class="mt-6 flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between"><ProductSearch v-model="search" /><ProductFilter v-model:category="category" v-model:status="status" :categories="productStore.categories" /></div>
 			<div class="mt-6 flex items-center justify-between"><p class="text-sm text-muted"><strong class="text-ink">{{ filteredProducts.length }}</strong> products</p><span class="text-xs text-muted">Updated just now</span></div>
+			<p v-if="productStore.error" role="alert" class="mt-3 text-sm text-danger">{{ productStore.error }}</p>
 			<div class="mt-3"><ProductTable :products="filteredProducts" @view="(product) => router.push(`/menu/products/${product.id}`)" @edit="(product) => router.push(`/menu/products/${product.id}/edit`)" @delete="productToDelete = $event" /></div>
 		</div>
 		<DeleteProductModal :open="Boolean(productToDelete)" :product="productToDelete" @cancel="productToDelete = null" @confirm="deleteProduct" />
