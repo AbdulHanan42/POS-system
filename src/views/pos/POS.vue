@@ -7,12 +7,13 @@ import PaymentModal from "../../components/pos/PaymentModal.vue";
 import ProductCard from "../../components/pos/ProductCard.vue";
 import ReceiptModal from "../../components/pos/ReceiptModal.vue";
 import SearchProduct from "../../components/pos/SearchProduct.vue";
-import products from "../../data/products.js";
 import { useCartStore } from "../../stores/cart.js";
 import { useOrderStore } from "../../stores/order.js";
+import { useProductStore } from "../../stores/product.js";
 
 const cart = useCartStore();
 const orders = useOrderStore();
+const productStore = useProductStore();
 const search = ref("");
 const activeCategory = ref("All");
 const orderType = ref("Dine in");
@@ -22,10 +23,10 @@ const showPayment = ref(false);
 const showReceipt = ref(false);
 const notice = ref("");
 const payment = ref({ method: "", received: 0, change: 0 });
-const categories = ["All", "Pizza", "Mains", "Starters", "Drinks"];
+const categories = computed(() => ["All", ...productStore.categories]);
 
 const filteredProducts = computed(() =>
-  products.filter((product) => {
+  productStore.items.filter((product) => {
     const query = search.value.trim().toLowerCase();
     return (
       (activeCategory.value === "All" || product.category === activeCategory.value) &&
