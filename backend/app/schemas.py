@@ -71,3 +71,32 @@ class OrderRead(BaseModel):
     items: list[OrderItemRead]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DashboardSalesDay(BaseModel):
+    date: str
+    label: str
+    total: float
+
+
+class DashboardTopProduct(BaseModel):
+    name: str
+    quantity: int
+
+
+class DashboardLowStockProduct(BaseModel):
+    id: int
+    name: str
+
+
+class DashboardResponse(BaseModel):
+    range: Literal["today", "week", "month"]
+    netSales: float
+    revenueChange: float
+    orderCount: int
+    dineInOrders: int
+    averageOrder: float
+    salesByDay: list[DashboardSalesDay]
+    topProducts: list[DashboardTopProduct]
+    lowStockProducts: list[DashboardLowStockProduct]
+    recentOrders: list[OrderRead]

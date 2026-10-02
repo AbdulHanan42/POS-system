@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import create_db_and_tables
+from app.routers.dashboard import router as dashboard_router
 from app.routers.orders import router as orders_router
 from app.routers.products import router as products_router
 from app.seed import seed_products
@@ -26,6 +27,7 @@ app.add_middleware(
 )
 app.include_router(products_router, prefix="/api")
 app.include_router(orders_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 
 @app.get("/")
