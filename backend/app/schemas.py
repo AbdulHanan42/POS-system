@@ -33,6 +33,22 @@ class ProductDeleteResponse(BaseModel):
     message: str
 
 
+class RestaurantTableCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    seats: int = Field(gt=0, le=50)
+    status: Literal["available", "occupied", "reserved"] = "available"
+
+
+class RestaurantTableRead(RestaurantTableCreate):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TableDeleteResponse(BaseModel):
+    message: str
+
+
 class OrderItemCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     quantity: int = Field(gt=0)
