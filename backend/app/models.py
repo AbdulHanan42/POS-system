@@ -2,8 +2,20 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Column, DateTime, JSON, Numeric, String
+from sqlalchemy import Boolean, Column, DateTime, JSON, Numeric, String
 from sqlmodel import Field, SQLModel
+
+
+class Category(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(
+        sa_column=Column(String(80), nullable=False, unique=True, index=True)
+    )
+    description: str = Field(default="", max_length=240)
+    isPizza: bool = Field(
+        default=False,
+        sa_column=Column("is_pizza", Boolean, nullable=False, default=False),
+    )
 
 
 class Product(SQLModel, table=True):

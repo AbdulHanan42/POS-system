@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 
 from app.database import engine
-from app.models import Product, RestaurantTable
+from app.models import Category, Product, RestaurantTable
 
 DEFAULT_PRODUCTS = [
     {
@@ -56,6 +56,14 @@ DEFAULT_TABLES = [
     {"name": "Table 3", "seats": 6, "status": "reserved"},
 ]
 
+DEFAULT_CATEGORIES = [
+    {"name": "Starters", "description": "Small plates and appetizers."},
+    {"name": "Mains", "description": "Main courses."},
+    {"name": "Pizza", "description": "Pizza with size-based pricing.", "isPizza": True},
+    {"name": "Desserts", "description": "Sweet finishes."},
+    {"name": "Drinks", "description": "Hot and cold beverages."},
+]
+
 
 def seed_products() -> None:
     with Session(engine) as session:
@@ -73,3 +81,21 @@ def seed_tables() -> None:
         if session.exec(select(RestaurantTable)).first() is None:
             session.add_all(RestaurantTable(**table_data) for table_data in DEFAULT_TABLES)
             session.commit()
+
+
+def seed_categories() -> None:
+    with Session(engine) as session:
+        if session.exec(select(Category)).first() is not None:
+            return
+
+        category_data = list(DEFAULT_CATEGORIES)
+        for product in session.exec(select(Product)).all():
+            if not any(
+                item["name"].casefold() == product.category.casefold()
+                for item in category_data
+            ):
+                category_data.append({"name": product.category})
+
+        for item in category_data:
+            session.add(Category(**item))
+        session.commit()
