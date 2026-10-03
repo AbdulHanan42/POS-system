@@ -70,6 +70,29 @@ class ModifierGroup(SQLModel, table=True):
     )
 
 
+class InventoryStock(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    productId: int = Field(index=True, unique=True)
+    quantity: int = Field(default=0, ge=0)
+    reorderLevel: int = Field(default=5, ge=0)
+    updatedAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("updated_at", DateTime(timezone=True), nullable=False),
+    )
+
+
+class InventoryMovement(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    productId: int = Field(index=True)
+    movementType: str = Field(max_length=20, index=True)
+    quantity: int = Field(gt=0)
+    reason: str = Field(max_length=240)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
 class Order(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     createdAt: datetime = Field(

@@ -6,11 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import create_db_and_tables
 from app.routers.dashboard import router as dashboard_router
 from app.routers.categories import router as categories_router
+from app.routers.inventory import router as inventory_router
 from app.routers.modifiers import router as modifiers_router
 from app.routers.orders import router as orders_router
 from app.routers.products import router as products_router
 from app.routers.tables import router as tables_router
-from app.seed import seed_categories, seed_products, seed_tables
+from app.seed import seed_categories, seed_inventory, seed_products, seed_tables
 
 
 @asynccontextmanager
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
     seed_products()
     seed_tables()
     seed_categories()
+    seed_inventory()
     yield
 
 
@@ -36,6 +38,7 @@ app.include_router(dashboard_router, prefix="/api")
 app.include_router(categories_router, prefix="/api")
 app.include_router(modifiers_router, prefix="/api")
 app.include_router(tables_router, prefix="/api")
+app.include_router(inventory_router, prefix="/api")
 
 
 @app.get("/")

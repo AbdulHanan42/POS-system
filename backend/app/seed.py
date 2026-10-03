@@ -1,7 +1,13 @@
 from sqlmodel import Session, select
 
 from app.database import engine
-from app.models import Category, Product, RestaurantTable
+from app.models import (
+    Category,
+    InventoryMovement,
+    InventoryStock,
+    Product,
+    RestaurantTable,
+)
 
 DEFAULT_PRODUCTS = [
     {
@@ -64,6 +70,8 @@ DEFAULT_CATEGORIES = [
     {"name": "Drinks", "description": "Hot and cold beverages."},
 ]
 
+DEFAULT_OPENING_QUANTITY = 20
+
 
 def seed_products() -> None:
     with Session(engine) as session:
@@ -98,4 +106,30 @@ def seed_categories() -> None:
 
         for item in category_data:
             session.add(Category(**item))
+        session.commit()
+
+
+def seed_inventory() -> None:
+    with Session(engine) as session:
+        default_product_names = {product["name"] for product in DEFAULT_PRODUCTS}
+        products = session.exec(select(Product)).all()
+        for product in products:
+            existing = session.exec(
+                select(InventoryStock).where(InventoryStock.productId == product.id)
+            ).first()
+            if existing is not None:
+                continue
+
+            quantity = DEFAULT_OPENING_QUANTITY if product.name in default_product_names else 0
+            stock = InventoryStock(productId=product.id, quantity=quantity, reorderLevel=5)
+            session.add(stock)
+            if quantity:
+                session.add(
+                    InventoryMovement(
+                        productId=product.id,
+                        movementType="stock_in",
+                        quantity=quantity,
+                        reason="Opening balance",
+                    )
+                )
         session.commit()

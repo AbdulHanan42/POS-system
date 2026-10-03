@@ -6,6 +6,7 @@ import BaseModal from '../common/BaseModal.vue'
 const props = defineProps({
   product: { type: Object, required: true },
   modifierGroups: { type: Array, default: () => [] },
+  inventoryQuantity: { type: Number, default: null },
 })
 const emit = defineEmits(['add'])
 const selectedSize = ref('medium')
@@ -17,6 +18,7 @@ const applicableGroups = computed(() => props.modifierGroups.filter((group) =>
 const basePrice = computed(() => Number(props.product.prices
   ? props.product.prices[selectedSize.value]
   : props.product.price))
+const isOutOfStock = computed(() => props.inventoryQuantity !== null && props.inventoryQuantity <= 0)
 const modifierTotal = computed(() => applicableGroups.value.reduce((sum, group) => {
   const selected = selections.value[group.id]
   const names = Array.isArray(selected) ? selected : selected ? [selected] : []
@@ -78,7 +80,7 @@ function confirmAdd() {
       <div v-if="product.prices" class="flex gap-1 rounded-sm bg-background p-1">
         <button v-for="size in ['small', 'medium', 'large']" :key="size" type="button" class="flex-1 rounded px-1 py-1.5 text-[10px] font-semibold capitalize" :class="selectedSize === size ? 'bg-surface text-brand shadow-sm' : 'text-muted'" @click="selectedSize = size">{{ size.charAt(0).toUpperCase() }} <span class="block font-normal">${{ product.prices[size].toFixed(2) }}</span></button>
       </div>
-      <div class="flex items-center justify-between"><strong class="text-base text-ink">${{ basePrice.toFixed(2) }}</strong><BaseButton class="min-h-9 px-3 text-xs" @click="beginAdd">{{ applicableGroups.length ? 'Customize' : 'Add' }}</BaseButton></div>
+      <div class="flex items-center justify-between"><span><strong class="text-base text-ink">${{ basePrice.toFixed(2) }}</strong><small v-if="inventoryQuantity !== null" class="mt-1 block text-xs" :class="isOutOfStock ? 'text-danger' : 'text-muted'">{{ isOutOfStock ? 'Out of stock' : `${inventoryQuantity} available` }}</small></span><BaseButton class="min-h-9 px-3 text-xs" :disabled="isOutOfStock" @click="beginAdd">{{ isOutOfStock ? 'Unavailable' : applicableGroups.length ? 'Customize' : 'Add' }}</BaseButton></div>
     </div>
   </article>
   <BaseModal :open="showModifiers">

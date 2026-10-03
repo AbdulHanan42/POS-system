@@ -129,6 +129,48 @@ class ModifierDeleteResponse(BaseModel):
     message: str
 
 
+class InventoryStockRead(BaseModel):
+    productId: int
+    name: str
+    category: str
+    image: str | None
+    unitPrice: float
+    quantity: int
+    reorderLevel: int
+    updatedAt: datetime
+    stockValue: float
+    status: Literal["in_stock", "low_stock", "out_of_stock"]
+
+
+class InventoryAdjustmentCreate(BaseModel):
+    productId: int = Field(gt=0)
+    movementType: Literal["stock_in", "stock_out"]
+    quantity: int = Field(gt=0)
+    reason: str = Field(min_length=1, max_length=240)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("A reason is required")
+        return value
+
+
+class ReorderLevelUpdate(BaseModel):
+    reorderLevel: int = Field(ge=0, le=100000)
+
+
+class InventoryMovementRead(BaseModel):
+    id: int
+    productId: int
+    productName: str
+    movementType: Literal["stock_in", "stock_out", "sale", "refund"]
+    quantity: int
+    reason: str
+    createdAt: datetime
+
+
 class OrderItemModifier(BaseModel):
     group: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=80)
@@ -136,6 +178,7 @@ class OrderItemModifier(BaseModel):
 
 
 class OrderItemCreate(BaseModel):
+    productId: int | None = Field(default=None, gt=0)
     name: str = Field(min_length=1, max_length=120)
     quantity: int = Field(gt=0)
     price: Decimal = Field(ge=0)
