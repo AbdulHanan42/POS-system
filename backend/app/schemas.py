@@ -74,11 +74,73 @@ class TableDeleteResponse(BaseModel):
     message: str
 
 
+class ModifierOptionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    price: float = Field(ge=0)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Modifier option name is required")
+        return value
+
+
+class ModifierGroupCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=240)
+    isRequired: bool = False
+    allowMultiple: bool = False
+    productIds: list[int] = Field(default_factory=list)
+    options: list[ModifierOptionCreate] = Field(min_length=1)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Modifier group name is required")
+        return value
+
+    @field_validator("options")
+    @classmethod
+    def ensure_unique_option_names(
+        cls,
+        options: list[ModifierOptionCreate],
+    ) -> list[ModifierOptionCreate]:
+        option_names = [option.name.casefold() for option in options]
+        if len(option_names) != len(set(option_names)):
+            raise ValueError("Modifier option names must be unique within a group")
+        return options
+
+
+class ModifierOptionRead(ModifierOptionCreate):
+    pass
+
+
+class ModifierGroupRead(ModifierGroupCreate):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ModifierDeleteResponse(BaseModel):
+    message: str
+
+
+class OrderItemModifier(BaseModel):
+    group: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=80)
+    price: float = Field(ge=0)
+
+
 class OrderItemCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     quantity: int = Field(gt=0)
     price: Decimal = Field(ge=0)
     selectedSize: str | None = None
+    modifiers: list[OrderItemModifier] = Field(default_factory=list)
 
 
 class OrderCreate(BaseModel):

@@ -23,6 +23,6 @@ def get_session() -> Generator[Session, None, None]:
 
 
 def create_db_and_tables() -> None:
-    from app.models import Category, Order, Product, RestaurantTable
+    from app.models import Category, ModifierGroup, Order, Product, RestaurantTable
 
     SQLModel.metadata.create_all(engine)
