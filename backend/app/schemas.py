@@ -2,7 +2,32 @@ from decimal import Decimal
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class CategoryCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=240)
+    isPizza: bool = False
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Category name is required")
+        return value
+
+
+class CategoryRead(CategoryCreate):
+    id: int
+    productCount: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CategoryDeleteResponse(BaseModel):
+    message: str
 
 
 class PizzaPrices(BaseModel):
