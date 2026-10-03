@@ -60,7 +60,10 @@ async function loadDashboard() {
   }
 }
 
-onMounted(loadDashboard);
+onMounted(() => {
+  tableStore.load().catch(() => undefined);
+  loadDashboard();
+});
 watch(range, loadDashboard);
 </script>
 

@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 
 from app.database import engine
-from app.models import Product
+from app.models import Product, RestaurantTable
 
 DEFAULT_PRODUCTS = [
     {
@@ -50,6 +50,12 @@ DEFAULT_PRODUCTS = [
     },
 ]
 
+DEFAULT_TABLES = [
+    {"name": "Table 1", "seats": 2, "status": "available"},
+    {"name": "Table 2", "seats": 4, "status": "occupied"},
+    {"name": "Table 3", "seats": 6, "status": "reserved"},
+]
+
 
 def seed_products() -> None:
     with Session(engine) as session:
@@ -60,3 +66,10 @@ def seed_products() -> None:
             if existing is None:
                 session.add(Product(**product_data))
         session.commit()
+
+
+def seed_tables() -> None:
+    with Session(engine) as session:
+        if session.exec(select(RestaurantTable)).first() is None:
+            session.add_all(RestaurantTable(**table_data) for table_data in DEFAULT_TABLES)
+            session.commit()

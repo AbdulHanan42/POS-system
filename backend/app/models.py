@@ -27,6 +27,13 @@ class Product(SQLModel, table=True):
     )
 
 
+class RestaurantTable(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True, max_length=80)
+    seats: int = Field(gt=0)
+    status: str = Field(default="available", max_length=20, index=True)
+
+
 class Order(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     createdAt: datetime = Field(
