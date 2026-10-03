@@ -46,6 +46,30 @@ class RestaurantTable(SQLModel, table=True):
     status: str = Field(default="available", max_length=20, index=True)
 
 
+class ModifierGroup(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(
+        sa_column=Column(String(80), nullable=False, unique=True, index=True)
+    )
+    description: str = Field(default="", max_length=240)
+    isRequired: bool = Field(
+        default=False,
+        sa_column=Column("is_required", Boolean, nullable=False, default=False),
+    )
+    allowMultiple: bool = Field(
+        default=False,
+        sa_column=Column("allow_multiple", Boolean, nullable=False, default=False),
+    )
+    productIds: list[int] = Field(
+        default_factory=list,
+        sa_column=Column("product_ids", JSON, nullable=False, default=list),
+    )
+    options: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, nullable=False, default=list),
+    )
+
+
 class Order(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     createdAt: datetime = Field(

@@ -10,12 +10,14 @@ import SearchProduct from "../../components/pos/SearchProduct.vue";
 import { useCartStore } from "../../stores/cart.js";
 import { useCategoryStore } from "../../stores/category.js";
 import { useOrderStore } from "../../stores/order.js";
+import { useModifierStore } from "../../stores/modifier.js";
 import { useProductStore } from "../../stores/product.js";
 
 const cart = useCartStore();
 const orders = useOrderStore();
 const productStore = useProductStore();
 const categoryStore = useCategoryStore();
+const modifierStore = useModifierStore();
 const search = ref("");
 const activeCategory = ref("All");
 const orderType = ref("Dine in");
@@ -32,6 +34,7 @@ const categories = computed(() => ["All", ...categoryStore.items.map((category) 
 
 onMounted(() => {
   if (!categoryStore.items.length) categoryStore.load().catch(() => undefined);
+  modifierStore.load().catch(() => undefined);
 });
 
 const filteredProducts = computed(() =>
@@ -57,7 +60,7 @@ async function completePayment(paymentDetails) {
       customer: "Walk-in customer",
       paymentMethod: paymentDetails.method,
       total: discountedTotal.value,
-      items: cart.items.map(({ name, quantity, price, selectedSize }) => ({ name, quantity, price, selectedSize })),
+      items: cart.items.map(({ name, quantity, price, selectedSize, modifiers }) => ({ name, quantity, price, selectedSize, modifiers })),
     });
     savedOrderId.value = order.id;
     notice.value = `Order #${order.id} saved. Payment received via ${paymentDetails.method}.`;
@@ -158,6 +161,7 @@ function finishOrder() {
             v-for="product in filteredProducts"
             :key="product.id"
             :product="product"
+            :modifier-groups="modifierStore.items"
             @add="cart.addItem"
           />
           <div

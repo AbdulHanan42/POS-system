@@ -6,7 +6,8 @@ export const useCartStore = defineStore('cart', () => {
   const total = computed(() => items.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
 
   function addItem(product) {
-    const itemKey = `${product.id}-${product.selectedSize || 'default'}`
+    const modifierKey = JSON.stringify((product.modifiers || []).map(({ group, name }) => [group, name]))
+    const itemKey = `${product.id}-${product.selectedSize || 'default'}-${modifierKey}`
     const existingItem = items.value.find((item) => item.itemKey === itemKey)
     if (existingItem) {
       existingItem.quantity += 1
