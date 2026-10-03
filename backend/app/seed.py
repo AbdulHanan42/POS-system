@@ -1,7 +1,13 @@
 from sqlmodel import Session, select
 
 from app.database import engine
-from app.models import Product
+from app.models import (
+    Category,
+    InventoryMovement,
+    InventoryStock,
+    Product,
+    RestaurantTable,
+)
 
 DEFAULT_PRODUCTS = [
     {
@@ -50,6 +56,22 @@ DEFAULT_PRODUCTS = [
     },
 ]
 
+DEFAULT_TABLES = [
+    {"name": "Table 1", "seats": 2, "status": "available"},
+    {"name": "Table 2", "seats": 4, "status": "occupied"},
+    {"name": "Table 3", "seats": 6, "status": "reserved"},
+]
+
+DEFAULT_CATEGORIES = [
+    {"name": "Starters", "description": "Small plates and appetizers."},
+    {"name": "Mains", "description": "Main courses."},
+    {"name": "Pizza", "description": "Pizza with size-based pricing.", "isPizza": True},
+    {"name": "Desserts", "description": "Sweet finishes."},
+    {"name": "Drinks", "description": "Hot and cold beverages."},
+]
+
+DEFAULT_OPENING_QUANTITY = 20
+
 
 def seed_products() -> None:
     with Session(engine) as session:
@@ -59,4 +81,55 @@ def seed_products() -> None:
             ).first()
             if existing is None:
                 session.add(Product(**product_data))
+        session.commit()
+
+
+def seed_tables() -> None:
+    with Session(engine) as session:
+        if session.exec(select(RestaurantTable)).first() is None:
+            session.add_all(RestaurantTable(**table_data) for table_data in DEFAULT_TABLES)
+            session.commit()
+
+
+def seed_categories() -> None:
+    with Session(engine) as session:
+        if session.exec(select(Category)).first() is not None:
+            return
+
+        category_data = list(DEFAULT_CATEGORIES)
+        for product in session.exec(select(Product)).all():
+            if not any(
+                item["name"].casefold() == product.category.casefold()
+                for item in category_data
+            ):
+                category_data.append({"name": product.category})
+
+        for item in category_data:
+            session.add(Category(**item))
+        session.commit()
+
+
+def seed_inventory() -> None:
+    with Session(engine) as session:
+        default_product_names = {product["name"] for product in DEFAULT_PRODUCTS}
+        products = session.exec(select(Product)).all()
+        for product in products:
+            existing = session.exec(
+                select(InventoryStock).where(InventoryStock.productId == product.id)
+            ).first()
+            if existing is not None:
+                continue
+
+            quantity = DEFAULT_OPENING_QUANTITY if product.name in default_product_names else 0
+            stock = InventoryStock(productId=product.id, quantity=quantity, reorderLevel=5)
+            session.add(stock)
+            if quantity:
+                session.add(
+                    InventoryMovement(
+                        productId=product.id,
+                        movementType="stock_in",
+                        quantity=quantity,
+                        reason="Opening balance",
+                    )
+                )
         session.commit()

@@ -5,7 +5,7 @@ import AppSidebar from '../components/layout/AppSidebar.vue'
 <template>
   <div class="default-layout">
     <AppSidebar />
-    <main><RouterView /></main>
+    <main class="min-w-0"><RouterView /></main>
   </div>
 </template>
 

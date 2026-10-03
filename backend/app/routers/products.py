@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.database import get_session
-from app.models import Product
+from app.models import InventoryStock, Product
 from app.schemas import ProductCreate, ProductDeleteResponse, ProductRead
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -35,6 +35,8 @@ def create_product(
     )
     product = Product(**product_values)
     session.add(product)
+    session.flush()
+    session.add(InventoryStock(productId=product.id, quantity=0, reorderLevel=5))
     session.commit()
     session.refresh(product)
     return product
@@ -72,6 +74,11 @@ def delete_product(
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    stock = session.exec(
+        select(InventoryStock).where(InventoryStock.productId == product_id)
+    ).first()
+    if stock is not None:
+        session.delete(stock)
     session.delete(product)
     session.commit()
     return ProductDeleteResponse(message="Product deleted")
