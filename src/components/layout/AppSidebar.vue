@@ -17,7 +17,7 @@ async function signOut() {
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">RP</span>
       <span class="brand-copy">
-        <strong>RestoPilot</strong>
+        <strong>{{ auth.user?.tenantName || 'RestoPilot' }}</strong>
         <small>Restaurant operations</small>
       </span>
     </div>

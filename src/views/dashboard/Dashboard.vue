@@ -3,10 +3,12 @@ import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { useCustomerStore } from "../../stores/customer.js";
 import { useTableStore } from "../../stores/table.js";
+import { useAuthStore } from "../../stores/auth.js";
 import { dashboardService } from "../../services/dashboardService.js";
 
 const customerStore = useCustomerStore();
 const tableStore = useTableStore();
+const auth = useAuthStore();
 const range = ref("today");
 const dashboard = ref({
   netSales: 0,
@@ -21,6 +23,21 @@ const dashboard = ref({
 });
 const dashboardError = ref("");
 const dashboardLoading = ref(false);
+
+const greeting = computed(() => {
+  const hour = new Date().getHours();
+  if (hour >= 9 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 15) return "Good noon";
+  if (hour >= 15 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 19) return "Good evening";
+  if (hour >= 19 || hour < 0) return "Good night";
+  return "Good morning";
+});
+
+const showCloseAlert = computed(() => {
+  const hour = new Date().getHours();
+  return hour >= 0 && hour < 9;
+});
 
 const formatCurrency = (value) => `$${Number(value).toFixed(2)}`;
 const rangeLabel = computed(
@@ -72,7 +89,7 @@ watch(range, loadDashboard);
     <header class="dashboard-header">
       <div>
         <p class="eyebrow">Operations overview</p>
-        <h1>Good morning, Alex</h1>
+        <h1>{{ greeting }}, {{ auth.user?.name || 'Admin' }}</h1>
         <p class="muted">Here is what is happening across your restaurant.</p>
       </div>
       <div class="header-actions">
@@ -130,6 +147,11 @@ watch(range, loadDashboard);
         }}
         marked inactive.</span
       ><RouterLink to="/inventory">Review inventory -&gt;</RouterLink>
+    </div>
+
+    <div v-if="showCloseAlert" class="alert-bar alert-bar--warning">
+      <strong>Time to close the restaurant</strong
+      ><span>The restaurant is closed. Please complete closing procedures.</span>
     </div>
 
     <div class="dashboard-grid">
@@ -341,6 +363,12 @@ h2 {
   background: #fff7ed;
   padding: 0.85rem 1rem;
   font-size: 0.8rem;
+}
+
+.alert-bar--warning {
+  border-color: #fca5a5;
+  border-left-color: var(--color-danger);
+  background: #fef2f2;
 }
 .alert-bar a {
   margin-left: auto;

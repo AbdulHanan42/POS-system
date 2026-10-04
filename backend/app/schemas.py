@@ -143,7 +143,7 @@ class AuthUserCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=10, max_length=128)
-    role: Literal["Manager", "Cashier", "Chef", "Waiter"]
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
 
     @field_validator("name")
     @classmethod
