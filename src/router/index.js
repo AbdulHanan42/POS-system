@@ -19,6 +19,7 @@ const router = createRouter({
     { path: '/customers/:id', component: () => import('../views/customers/CustomerDetails.vue') },
     { path: '/inventory', component: () => import('../views/inventory/Inventory.vue') },
     { path: '/purchases', component: () => import('../views/purchases/Purchases.vue') },
+    { path: '/purchases/new', component: () => import('../views/purchases/CreatePurchase.vue') },
     { path: '/reports', component: () => import('../views/reports/SalesReport.vue') },
     { path: '/staff', component: () => import('../views/staff/Staff.vue') },
     { path: '/login', component: () => import('../views/auth/Login.vue') },

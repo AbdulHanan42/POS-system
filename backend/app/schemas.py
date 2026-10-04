@@ -171,6 +171,44 @@ class InventoryMovementRead(BaseModel):
     createdAt: datetime
 
 
+class PurchaseItemCreate(BaseModel):
+    productId: int = Field(gt=0)
+    quantity: int = Field(gt=0)
+    unitCost: Decimal = Field(ge=0)
+
+
+class PurchaseCreate(BaseModel):
+    supplier: str = Field(min_length=1, max_length=120)
+    items: list[PurchaseItemCreate] = Field(min_length=1)
+
+    @field_validator("supplier")
+    @classmethod
+    def normalize_supplier(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Supplier is required")
+        return value
+
+
+class PurchaseItemRead(BaseModel):
+    productId: int
+    productName: str
+    quantity: int
+    unitCost: float
+    lineTotal: float
+
+
+class PurchaseRead(BaseModel):
+    id: int
+    supplier: str
+    status: Literal["pending", "received"]
+    createdAt: datetime
+    total: float
+    items: list[PurchaseItemRead]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OrderItemModifier(BaseModel):
     group: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=80)

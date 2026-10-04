@@ -29,6 +29,7 @@ def create_db_and_tables() -> None:
         InventoryStock,
         ModifierGroup,
         Order,
+        Purchase,
         Product,
         RestaurantTable,
     )
