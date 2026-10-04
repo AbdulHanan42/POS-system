@@ -171,6 +171,44 @@ class InventoryMovementRead(BaseModel):
     createdAt: datetime
 
 
+class PurchaseItemCreate(BaseModel):
+    productId: int = Field(gt=0)
+    quantity: int = Field(gt=0)
+    unitCost: Decimal = Field(ge=0)
+
+
+class PurchaseCreate(BaseModel):
+    supplier: str = Field(min_length=1, max_length=120)
+    items: list[PurchaseItemCreate] = Field(min_length=1)
+
+    @field_validator("supplier")
+    @classmethod
+    def normalize_supplier(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Supplier is required")
+        return value
+
+
+class PurchaseItemRead(BaseModel):
+    productId: int
+    productName: str
+    quantity: int
+    unitCost: float
+    lineTotal: float
+
+
+class PurchaseRead(BaseModel):
+    id: int
+    supplier: str
+    status: Literal["pending", "received"]
+    createdAt: datetime
+    total: float
+    items: list[PurchaseItemRead]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OrderItemModifier(BaseModel):
     group: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=80)
@@ -193,12 +231,30 @@ class OrderCreate(BaseModel):
     table: str = Field(default="", max_length=80)
     customer: str = Field(min_length=1, max_length=120)
     paymentMethod: Literal["Cash", "Card", "Mobile money"]
+    discount: Decimal = Field(default=Decimal("0.00"), ge=0)
     total: Decimal = Field(ge=0)
+    items: list[OrderItemCreate] = Field(min_length=1)
+
+
+class KitchenOrderCreate(BaseModel):
+    createdAt: datetime | None = None
+    type: Literal["Dine in", "Takeaway", "Delivery"]
+    table: str = Field(default="", max_length=80)
+    customer: str = Field(min_length=1, max_length=120)
+    discount: Decimal = Field(default=Decimal("0.00"), ge=0)
     items: list[OrderItemCreate] = Field(min_length=1)
 
 
 class OrderStatusUpdate(BaseModel):
     status: Literal["paid", "refunded"]
+
+
+class KitchenStatusUpdate(BaseModel):
+    kitchenStatus: Literal["queued", "preparing", "ready", "completed"]
+
+
+class OrderPaymentCreate(BaseModel):
+    paymentMethod: Literal["Cash", "Card", "Mobile money"]
 
 
 class OrderItemRead(OrderItemCreate):
@@ -208,11 +264,13 @@ class OrderItemRead(OrderItemCreate):
 class OrderRead(BaseModel):
     id: int
     createdAt: datetime
-    status: Literal["paid", "refunded"]
+    status: Literal["awaiting_payment", "paid", "refunded"]
+    kitchenStatus: Literal["queued", "preparing", "ready", "completed"]
     type: Literal["Dine in", "Takeaway", "Delivery"]
     table: str
     customer: str
     paymentMethod: str
+    discount: float = 0
     total: float
     items: list[OrderItemRead]
 
@@ -246,3 +304,55 @@ class DashboardResponse(BaseModel):
     topProducts: list[DashboardTopProduct]
     lowStockProducts: list[DashboardLowStockProduct]
     recentOrders: list[OrderRead]
+
+
+class SalesReportSummary(BaseModel):
+    grossSales: float
+    refunds: float
+    netSales: float
+    discounts: float
+    orderCount: int
+    refundCount: int
+    averageOrder: float
+
+
+class SalesReportDay(BaseModel):
+    date: str
+    label: str
+    sales: float
+    refunds: float
+    orderCount: int
+
+
+class SalesReportProduct(BaseModel):
+    name: str
+    quantity: int
+    sales: float
+
+
+class SalesReportBreakdown(BaseModel):
+    name: str
+    orderCount: int
+    sales: float
+
+
+class SalesReportTransaction(BaseModel):
+    id: int
+    createdAt: datetime
+    customer: str
+    type: str
+    paymentMethod: str
+    status: Literal["paid", "refunded"]
+    total: float
+
+
+class SalesReportRead(BaseModel):
+    range: Literal["today", "week", "month", "custom"]
+    startDate: str
+    endDate: str
+    summary: SalesReportSummary
+    salesByDay: list[SalesReportDay]
+    topProducts: list[SalesReportProduct]
+    paymentMethods: list[SalesReportBreakdown]
+    orderTypes: list[SalesReportBreakdown]
+    recentOrders: list[SalesReportTransaction]
