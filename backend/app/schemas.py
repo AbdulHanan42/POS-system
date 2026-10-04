@@ -304,3 +304,55 @@ class DashboardResponse(BaseModel):
     topProducts: list[DashboardTopProduct]
     lowStockProducts: list[DashboardLowStockProduct]
     recentOrders: list[OrderRead]
+
+
+class SalesReportSummary(BaseModel):
+    grossSales: float
+    refunds: float
+    netSales: float
+    discounts: float
+    orderCount: int
+    refundCount: int
+    averageOrder: float
+
+
+class SalesReportDay(BaseModel):
+    date: str
+    label: str
+    sales: float
+    refunds: float
+    orderCount: int
+
+
+class SalesReportProduct(BaseModel):
+    name: str
+    quantity: int
+    sales: float
+
+
+class SalesReportBreakdown(BaseModel):
+    name: str
+    orderCount: int
+    sales: float
+
+
+class SalesReportTransaction(BaseModel):
+    id: int
+    createdAt: datetime
+    customer: str
+    type: str
+    paymentMethod: str
+    status: Literal["paid", "refunded"]
+    total: float
+
+
+class SalesReportRead(BaseModel):
+    range: Literal["today", "week", "month", "custom"]
+    startDate: str
+    endDate: str
+    summary: SalesReportSummary
+    salesByDay: list[SalesReportDay]
+    topProducts: list[SalesReportProduct]
+    paymentMethods: list[SalesReportBreakdown]
+    orderTypes: list[SalesReportBreakdown]
+    recentOrders: list[SalesReportTransaction]
