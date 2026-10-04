@@ -46,6 +46,36 @@ class RestaurantTable(SQLModel, table=True):
     status: str = Field(default="available", max_length=20, index=True)
 
 
+class StaffMember(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(max_length=120, index=True)
+    email: str = Field(max_length=254, unique=True, index=True)
+    phone: str = Field(default="", max_length=30)
+    role: str = Field(max_length=40, index=True)
+    status: str = Field(default="active", max_length=20, index=True)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
+class RestaurantSettings(SQLModel, table=True):
+    id: int = Field(default=1, primary_key=True)
+    restaurantName: str = Field(default="Restaurant POS", max_length=120)
+    email: str = Field(default="", max_length=254)
+    phone: str = Field(default="", max_length=30)
+    address: str = Field(default="", max_length=240)
+    taxRate: Decimal = Field(
+        default=Decimal("0.1000"),
+        sa_column=Column(Numeric(5, 4), nullable=False, default=Decimal("0.1000")),
+    )
+    receiptFooter: str = Field(default="", max_length=240)
+    updatedAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("updated_at", DateTime(timezone=True), nullable=False),
+    )
+
+
 class ModifierGroup(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(
@@ -132,6 +162,15 @@ class Order(SQLModel, table=True):
     discount: Decimal = Field(
         default=Decimal("0.00"),
         sa_column=Column(Numeric(10, 2), nullable=False, default=Decimal("0.00")),
+    )
+    taxRate: Decimal = Field(
+        default=Decimal("0.1000"),
+        sa_column=Column(
+            "tax_rate",
+            Numeric(5, 4),
+            nullable=False,
+            default=Decimal("0.1000"),
+        ),
     )
     total: Decimal = Field(
         sa_column=Column(Numeric(10, 2), nullable=False),

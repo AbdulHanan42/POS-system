@@ -70,6 +70,79 @@ class RestaurantTableRead(RestaurantTableCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StaffCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    phone: str = Field(default="", max_length=30)
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+    status: Literal["active", "inactive"] = "active"
+
+    @field_validator("name")
+    @classmethod
+    def normalize_staff_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Staff name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_staff_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]:
+            raise ValueError("Enter a valid email address")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_staff_phone(cls, value: str) -> str:
+        return value.strip()
+
+
+class StaffRead(StaffCreate):
+    id: int
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RestaurantSettingsUpdate(BaseModel):
+    restaurantName: str = Field(min_length=1, max_length=120)
+    email: str = Field(default="", max_length=254)
+    phone: str = Field(default="", max_length=30)
+    address: str = Field(default="", max_length=240)
+    taxRate: Decimal = Field(ge=0, le=1)
+    receiptFooter: str = Field(default="", max_length=240)
+
+    @field_validator("restaurantName")
+    @classmethod
+    def normalize_restaurant_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Restaurant name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def validate_settings_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value and (value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]):
+            raise ValueError("Enter a valid email address")
+        return value
+
+    @field_validator("phone", "address", "receiptFooter")
+    @classmethod
+    def normalize_settings_text(cls, value: str) -> str:
+        return value.strip()
+
+
+class RestaurantSettingsRead(RestaurantSettingsUpdate):
+    id: int
+    updatedAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TableDeleteResponse(BaseModel):
     message: str
 
@@ -232,6 +305,7 @@ class OrderCreate(BaseModel):
     customer: str = Field(min_length=1, max_length=120)
     paymentMethod: Literal["Cash", "Card", "Mobile money"]
     discount: Decimal = Field(default=Decimal("0.00"), ge=0)
+    taxRate: Decimal = Field(default=Decimal("0.1000"), ge=0, le=1)
     total: Decimal = Field(ge=0)
     items: list[OrderItemCreate] = Field(min_length=1)
 
@@ -242,6 +316,7 @@ class KitchenOrderCreate(BaseModel):
     table: str = Field(default="", max_length=80)
     customer: str = Field(min_length=1, max_length=120)
     discount: Decimal = Field(default=Decimal("0.00"), ge=0)
+    taxRate: Decimal = Field(default=Decimal("0.1000"), ge=0, le=1)
     items: list[OrderItemCreate] = Field(min_length=1)
 
 
@@ -271,6 +346,7 @@ class OrderRead(BaseModel):
     customer: str
     paymentMethod: str
     discount: float = 0
+    taxRate: float = 0.1
     total: float
     items: list[OrderItemRead]
 

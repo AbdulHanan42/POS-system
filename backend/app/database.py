@@ -32,7 +32,9 @@ def create_db_and_tables() -> None:
         Order,
         Purchase,
         Product,
+        RestaurantSettings,
         RestaurantTable,
+        StaffMember,
     )
 
     SQLModel.metadata.create_all(engine)
@@ -53,5 +55,12 @@ def create_db_and_tables() -> None:
                 text(
                     f'ALTER TABLE "{Order.__tablename__}" '
                     "ADD COLUMN discount NUMERIC(10, 2) NOT NULL DEFAULT 0"
+                )
+            )
+        if "tax_rate" not in columns:
+            connection.execute(
+                text(
+                    f'ALTER TABLE "{Order.__tablename__}" '
+                    "ADD COLUMN tax_rate NUMERIC(5, 4) NOT NULL DEFAULT 0.1000"
                 )
             )
