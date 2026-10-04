@@ -109,7 +109,9 @@ def create_kitchen_order(
 
     if order_data.discount > subtotal:
         raise HTTPException(status_code=422, detail="Discount cannot exceed the subtotal")
-    total = ((subtotal - order_data.discount) * Decimal("1.10")).quantize(Decimal("0.01"))
+    total = (
+        (subtotal - order_data.discount) * (Decimal("1.00") + order_data.taxRate)
+    ).quantize(Decimal("0.01"))
     order = Order(
         createdAt=order_data.createdAt or datetime.now(timezone.utc),
         status="awaiting_payment",
@@ -119,6 +121,7 @@ def create_kitchen_order(
         customer=order_data.customer,
         paymentMethod="Pending",
         discount=order_data.discount,
+        taxRate=order_data.taxRate,
         total=total,
         items=item_values,
     )
