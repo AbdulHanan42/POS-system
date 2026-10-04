@@ -116,6 +116,10 @@ class Order(SQLModel, table=True):
         sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
     )
     status: str = Field(default="paid", max_length=20, index=True)
+    kitchenStatus: str = Field(
+        default="queued",
+        sa_column=Column("kitchen_status", String(20), nullable=False, default="queued"),
+    )
     type: str = Field(max_length=30)
     table: str = Field(
         default="",
@@ -124,6 +128,10 @@ class Order(SQLModel, table=True):
     customer: str = Field(max_length=120)
     paymentMethod: str = Field(
         sa_column=Column("payment_method", String(40), nullable=False),
+    )
+    discount: Decimal = Field(
+        default=Decimal("0.00"),
+        sa_column=Column(Numeric(10, 2), nullable=False, default=Decimal("0.00")),
     )
     total: Decimal = Field(
         sa_column=Column(Numeric(10, 2), nullable=False),

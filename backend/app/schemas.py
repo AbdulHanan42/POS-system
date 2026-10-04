@@ -231,12 +231,30 @@ class OrderCreate(BaseModel):
     table: str = Field(default="", max_length=80)
     customer: str = Field(min_length=1, max_length=120)
     paymentMethod: Literal["Cash", "Card", "Mobile money"]
+    discount: Decimal = Field(default=Decimal("0.00"), ge=0)
     total: Decimal = Field(ge=0)
+    items: list[OrderItemCreate] = Field(min_length=1)
+
+
+class KitchenOrderCreate(BaseModel):
+    createdAt: datetime | None = None
+    type: Literal["Dine in", "Takeaway", "Delivery"]
+    table: str = Field(default="", max_length=80)
+    customer: str = Field(min_length=1, max_length=120)
+    discount: Decimal = Field(default=Decimal("0.00"), ge=0)
     items: list[OrderItemCreate] = Field(min_length=1)
 
 
 class OrderStatusUpdate(BaseModel):
     status: Literal["paid", "refunded"]
+
+
+class KitchenStatusUpdate(BaseModel):
+    kitchenStatus: Literal["queued", "preparing", "ready", "completed"]
+
+
+class OrderPaymentCreate(BaseModel):
+    paymentMethod: Literal["Cash", "Card", "Mobile money"]
 
 
 class OrderItemRead(OrderItemCreate):
@@ -246,11 +264,13 @@ class OrderItemRead(OrderItemCreate):
 class OrderRead(BaseModel):
     id: int
     createdAt: datetime
-    status: Literal["paid", "refunded"]
+    status: Literal["awaiting_payment", "paid", "refunded"]
+    kitchenStatus: Literal["queued", "preparing", "ready", "completed"]
     type: Literal["Dine in", "Takeaway", "Delivery"]
     table: str
     customer: str
     paymentMethod: str
+    discount: float = 0
     total: float
     items: list[OrderItemRead]
 
