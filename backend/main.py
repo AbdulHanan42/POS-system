@@ -12,6 +12,7 @@ from app.routers.orders import router as orders_router
 from app.routers.products import router as products_router
 from app.routers.purchases import router as purchases_router
 from app.routers.reports import router as reports_router
+from app.routers.staff import router as staff_router
 from app.routers.tables import router as tables_router
 from app.seed import seed_categories, seed_inventory, seed_products, seed_tables
 
@@ -43,6 +44,7 @@ app.include_router(tables_router, prefix="/api")
 app.include_router(inventory_router, prefix="/api")
 app.include_router(purchases_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
+app.include_router(staff_router, prefix="/api")
 
 
 @app.get("/")
