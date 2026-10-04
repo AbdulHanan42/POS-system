@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_permission, require_roles
 from app.inventory import apply_inventory_movement, get_or_create_stock
 from app.models import InventoryMovement, InventoryStock, Product
 from app.schemas import (
@@ -13,7 +14,11 @@ from app.schemas import (
     ReorderLevelUpdate,
 )
 
-router = APIRouter(prefix="/inventory", tags=["inventory"])
+router = APIRouter(
+    prefix="/inventory",
+    tags=["inventory"],
+    dependencies=[Depends(require_permission("inventory:read"))],
+)
 
 
 def inventory_item(product: Product, stock: InventoryStock) -> InventoryStockRead:
@@ -90,6 +95,7 @@ def list_movements(
 @router.post("/adjustments", response_model=InventoryStockRead)
 def adjust_inventory(
     adjustment: InventoryAdjustmentCreate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> InventoryStockRead:
     product = session.get(Product, adjustment.productId)
@@ -112,6 +118,7 @@ def adjust_inventory(
 def update_reorder_level(
     product_id: int,
     update: ReorderLevelUpdate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> InventoryStockRead:
     product = session.get(Product, product_id)

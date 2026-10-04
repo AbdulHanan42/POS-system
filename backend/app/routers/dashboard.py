@@ -7,10 +7,15 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_roles
 from app.models import Order, Product
 from app.schemas import DashboardResponse
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"],
+    dependencies=[Depends(require_roles("Administrator", "Manager"))],
+)
 RANGE_DAYS = {"today": 1, "week": 7, "month": 30}
 
 

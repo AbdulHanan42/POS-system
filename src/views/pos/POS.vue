@@ -11,12 +11,14 @@ import { useCartStore } from "../../stores/cart.js";
 import { useCategoryStore } from "../../stores/category.js";
 import { useInventoryStore } from "../../stores/inventory.js";
 import { useOrderStore } from "../../stores/order.js";
+import { useAuthStore } from "../../stores/auth.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useModifierStore } from "../../stores/modifier.js";
 import { useProductStore } from "../../stores/product.js";
 
 const cart = useCartStore();
 const orders = useOrderStore();
+const auth = useAuthStore();
 const productStore = useProductStore();
 const categoryStore = useCategoryStore();
 const inventoryStore = useInventoryStore();
@@ -214,7 +216,7 @@ function finishOrder() {
     >
       {{ notice }}
     </p>
-    <section v-if="readyKitchenOrders.length" class="mx-5 mt-4 rounded-md border border-success/30 bg-success/5 px-4 py-4 lg:mx-8" aria-labelledby="ready-payments-heading">
+    <section v-if="auth.can('orders:payment') && readyKitchenOrders.length" class="mx-5 mt-4 rounded-md border border-success/30 bg-success/5 px-4 py-4 lg:mx-8" aria-labelledby="ready-payments-heading">
       <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><p class="text-xs font-bold uppercase tracking-[0.14em] text-success">Kitchen ready</p><h2 id="ready-payments-heading" class="mt-1 text-base font-bold text-ink">Ready for payment</h2></div><span class="text-xs text-muted">{{ readyKitchenOrders.length }} {{ readyKitchenOrders.length === 1 ? 'order' : 'orders' }}</span></div>
       <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3"><article v-for="order in readyKitchenOrders" :key="order.id" class="flex items-center justify-between gap-3 rounded-sm border border-border bg-surface px-3 py-3"><div class="min-w-0"><strong class="block truncate text-sm text-ink">Order #{{ order.id }} · {{ order.table || order.type }}</strong><span class="mt-1 block text-xs text-muted">{{ order.items.reduce((sum, item) => sum + item.quantity, 0) }} items · ${{ Number(order.total).toFixed(2) }}</span></div><BaseButton class="shrink-0 px-3 text-xs" @click="continueToPayment(order)">Continue to payment</BaseButton></article></div>
     </section>
@@ -264,6 +266,7 @@ function finishOrder() {
         :order-type="orderType"
         :table="table"
         :sending-to-kitchen="sendingToKitchen"
+        :allow-direct-checkout="auth.can('orders:payment')"
         @increment="cart.addItem"
         @decrement="cart.decreaseItem"
         @remove="cart.removeItem"

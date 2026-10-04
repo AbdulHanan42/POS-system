@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_roles
 from app.models import Order
 from app.schemas import (
     SalesReportBreakdown,
@@ -17,7 +18,11 @@ from app.schemas import (
     SalesReportTransaction,
 )
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(
+    prefix="/reports",
+    tags=["reports"],
+    dependencies=[Depends(require_roles("Administrator", "Manager"))],
+)
 
 
 @router.get("/sales", response_model=SalesReportRead)

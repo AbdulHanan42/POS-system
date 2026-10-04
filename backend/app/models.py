@@ -2,14 +2,68 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Boolean, Column, DateTime, JSON, Numeric, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
-class Category(SQLModel, table=True):
+class Tenant(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(max_length=120)
+    slug: str = Field(max_length=100, unique=True, index=True)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
+class UserAccount(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, index=True)
+    )
+    name: str = Field(max_length=120)
+    email: str = Field(max_length=254, unique=True, index=True)
+    passwordHash: str = Field(
+        sa_column=Column("password_hash", String(200), nullable=False),
+    )
+    role: str = Field(max_length=40, index=True)
+    status: str = Field(default="active", max_length=20, index=True)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
+class AuthSession(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    userId: int = Field(
+        sa_column=Column("user_id", Integer, ForeignKey("useraccount.id"), nullable=False, index=True)
+    )
+    tokenHash: str = Field(
+        sa_column=Column("token_hash", String(64), nullable=False, unique=True, index=True),
+    )
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+    expiresAt: datetime = Field(
+        sa_column=Column("expires_at", DateTime(timezone=True), nullable=False, index=True),
+    )
+    revokedAt: datetime | None = Field(
+        default=None,
+        sa_column=Column("revoked_at", DateTime(timezone=True), nullable=True),
+    )
+
+
+class Category(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_category_tenant_name"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     name: str = Field(
-        sa_column=Column(String(80), nullable=False, unique=True, index=True)
+        sa_column=Column(String(80), nullable=False, index=True)
     )
     description: str = Field(default="", max_length=240)
     isPizza: bool = Field(
@@ -20,6 +74,9 @@ class Category(SQLModel, table=True):
 
 class Product(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     name: str = Field(index=True, max_length=120)
     category: str = Field(index=True, max_length=80)
     price: Decimal = Field(
@@ -41,6 +98,9 @@ class Product(SQLModel, table=True):
 
 class RestaurantTable(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     name: str = Field(index=True, max_length=80)
     seats: int = Field(gt=0)
     status: str = Field(default="available", max_length=20, index=True)
@@ -48,6 +108,9 @@ class RestaurantTable(SQLModel, table=True):
 
 class StaffMember(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     name: str = Field(max_length=120, index=True)
     email: str = Field(max_length=254, unique=True, index=True)
     phone: str = Field(default="", max_length=30)
@@ -60,7 +123,12 @@ class StaffMember(SQLModel, table=True):
 
 
 class RestaurantSettings(SQLModel, table=True):
-    id: int = Field(default=1, primary_key=True)
+    __table_args__ = (UniqueConstraint("tenant_id", name="uq_restaurantsettings_tenant_id"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     restaurantName: str = Field(default="Restaurant POS", max_length=120)
     email: str = Field(default="", max_length=254)
     phone: str = Field(default="", max_length=30)
@@ -77,9 +145,14 @@ class RestaurantSettings(SQLModel, table=True):
 
 
 class ModifierGroup(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_modifiergroup_tenant_name"),)
+
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     name: str = Field(
-        sa_column=Column(String(80), nullable=False, unique=True, index=True)
+        sa_column=Column(String(80), nullable=False, index=True)
     )
     description: str = Field(default="", max_length=240)
     isRequired: bool = Field(
@@ -102,6 +175,9 @@ class ModifierGroup(SQLModel, table=True):
 
 class InventoryStock(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     productId: int = Field(index=True, unique=True)
     quantity: int = Field(default=0, ge=0)
     reorderLevel: int = Field(default=5, ge=0)
@@ -113,6 +189,9 @@ class InventoryStock(SQLModel, table=True):
 
 class InventoryMovement(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     productId: int = Field(index=True)
     movementType: str = Field(max_length=20, index=True)
     quantity: int = Field(gt=0)
@@ -125,6 +204,9 @@ class InventoryMovement(SQLModel, table=True):
 
 class Purchase(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     supplier: str = Field(max_length=120, index=True)
     status: str = Field(default="pending", max_length=20, index=True)
     createdAt: datetime = Field(
@@ -141,6 +223,9 @@ class Purchase(SQLModel, table=True):
 
 class Order(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     createdAt: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
