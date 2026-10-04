@@ -1,66 +1,80 @@
+<script setup>
+import { LogOut } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth.js'
+
+const auth = useAuthStore()
+const router = useRouter()
+
+async function signOut() {
+  await auth.logout()
+  await router.replace('/login')
+}
+</script>
+
 <template>
   <aside class="app-sidebar" aria-label="Main navigation">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">RP</span>
       <span class="brand-copy">
-        <strong>RestoPilot</strong>
+        <strong>{{ auth.user?.tenantName || 'RestoPilot' }}</strong>
         <small>Restaurant operations</small>
       </span>
     </div>
 
     <nav class="navigation">
       <p class="nav-label">Workspace</p>
-      <RouterLink class="nav-item" to="/dashboard">
+      <RouterLink v-if="auth.can('dashboard:read')" class="nav-item" to="/dashboard">
         <span class="nav-icon" aria-hidden="true">DB</span>
         <span>Dashboard</span>
       </RouterLink>
-      <RouterLink class="nav-item nav-item--accent" to="/pos">
+      <RouterLink v-if="auth.can('pos:use')" class="nav-item nav-item--accent" to="/pos">
         <span class="nav-icon" aria-hidden="true">$</span>
         <span>Point of Sale</span>
         <span class="nav-shortcut">Ctrl P</span>
       </RouterLink>
 
       <p class="nav-label nav-label--spaced">Management</p>
-      <RouterLink class="nav-item" to="/tables">
+      <RouterLink v-if="auth.can('tables:read')" class="nav-item" to="/tables">
         <span class="nav-icon" aria-hidden="true">TB</span>
         <span>Tables</span>
       </RouterLink>
-      <div class="menu-group">
+      <div v-if="auth.can('catalog:manage')" class="menu-group">
         <p class="nav-label nav-label--inline">Menu</p>
         <RouterLink class="nav-subitem" to="/menu/products">Products</RouterLink>
         <RouterLink class="nav-subitem" to="/menu/categories">Categories</RouterLink>
         <RouterLink class="nav-subitem" to="/menu/modifiers">Modifiers</RouterLink>
       </div>
-      <RouterLink class="nav-item" to="/orders">
+      <RouterLink v-if="auth.can('orders:read')" class="nav-item" to="/orders">
         <span class="nav-icon" aria-hidden="true">OR</span>
         <span>Orders</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/kitchen">
+      <RouterLink v-if="auth.can('kitchen:read')" class="nav-item" to="/kitchen">
         <span class="nav-icon" aria-hidden="true">KT</span>
         <span>Kitchen</span>
         <span class="status-dot" aria-label="Kitchen has active orders"></span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/customers">
+      <RouterLink v-if="auth.can('customers:manage')" class="nav-item" to="/customers">
         <span class="nav-icon" aria-hidden="true">CU</span>
         <span>Customers</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/inventory">
+      <RouterLink v-if="auth.can('inventory:read')" class="nav-item" to="/inventory">
         <span class="nav-icon" aria-hidden="true">IN</span>
         <span>Inventory</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/purchases">
+      <RouterLink v-if="auth.can('purchases:manage')" class="nav-item" to="/purchases">
         <span class="nav-icon" aria-hidden="true">PU</span>
         <span>Purchases</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/reports">
+      <RouterLink v-if="auth.can('reports:read')" class="nav-item" to="/reports">
         <span class="nav-icon" aria-hidden="true">RE</span>
         <span>Reports</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/staff">
+      <RouterLink v-if="auth.can('staff:manage')" class="nav-item" to="/staff">
         <span class="nav-icon" aria-hidden="true">ST</span>
         <span>Staff</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/settings">
+      <RouterLink v-if="auth.can('settings:manage')" class="nav-item" to="/settings">
         <span class="nav-icon" aria-hidden="true">SE</span>
         <span>Settings</span>
       </RouterLink>
@@ -70,18 +84,18 @@
       <div class="shift-status">
         <span class="status-dot" aria-hidden="true"></span>
         <span>
-          <strong>Shift active</strong>
-          <small>Today, 09:00 - 17:00</small>
+          <strong>{{ auth.user?.tenantName }}</strong>
+          <small>{{ auth.user?.role }}</small>
         </span>
       </div>
-      <RouterLink class="account" to="/settings">
-        <span class="avatar">AM</span>
+      <div class="account">
+        <span class="avatar">{{ auth.user?.name?.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase() }}</span>
         <span class="account-copy">
-          <strong>Alex Morgan</strong>
-          <small>Administrator</small>
+          <strong>{{ auth.user?.name }}</strong>
+          <small>{{ auth.user?.email }}</small>
         </span>
-        <span class="account-menu" aria-hidden="true">...</span>
-      </RouterLink>
+        <button type="button" class="account-menu" aria-label="Sign out" title="Sign out" @click="signOut"><LogOut :size="16" aria-hidden="true" /></button>
+      </div>
     </div>
   </aside>
 </template>

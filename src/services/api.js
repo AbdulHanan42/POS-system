@@ -2,9 +2,14 @@ const apiBaseUrl = import.meta.env.VITE_API_URL || '/api'
 
 export async function apiRequest(path, options = {}) {
   let response
+  const accessToken = localStorage.getItem('restopilot.accessToken')
   try {
     response = await fetch(`${apiBaseUrl}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       ...options,
     })
   } catch {

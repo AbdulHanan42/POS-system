@@ -3,10 +3,15 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_permission, require_roles
 from app.models import ModifierGroup, Product
 from app.schemas import ModifierDeleteResponse, ModifierGroupCreate, ModifierGroupRead
 
-router = APIRouter(prefix="/modifiers", tags=["modifiers"])
+router = APIRouter(
+    prefix="/modifiers",
+    tags=["modifiers"],
+    dependencies=[Depends(require_permission("catalog:read"))],
+)
 
 
 def ensure_unique_name(name: str, session: Session, group_id: int | None = None) -> None:
@@ -44,6 +49,7 @@ def list_modifier_groups(session: Session = Depends(get_session)) -> list[Modifi
 @router.post("", response_model=ModifierGroupRead, status_code=status.HTTP_201_CREATED)
 def create_modifier_group(
     group_data: ModifierGroupCreate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> ModifierGroup:
     ensure_unique_name(group_data.name, session)
@@ -59,6 +65,7 @@ def create_modifier_group(
 def update_modifier_group(
     group_id: int,
     group_data: ModifierGroupCreate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> ModifierGroup:
     group = session.get(ModifierGroup, group_id)
@@ -78,6 +85,7 @@ def update_modifier_group(
 @router.delete("/{group_id}", response_model=ModifierDeleteResponse)
 def delete_modifier_group(
     group_id: int,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> ModifierDeleteResponse:
     group = session.get(ModifierGroup, group_id)

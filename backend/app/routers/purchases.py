@@ -4,11 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_roles
 from app.inventory import apply_inventory_movement
 from app.models import Product, Purchase
 from app.schemas import PurchaseCreate, PurchaseItemRead, PurchaseRead
 
-router = APIRouter(prefix="/purchases", tags=["purchases"])
+router = APIRouter(
+    prefix="/purchases",
+    tags=["purchases"],
+    dependencies=[Depends(require_roles("Administrator", "Manager"))],
+)
 
 
 def purchase_read(purchase: Purchase) -> PurchaseRead:

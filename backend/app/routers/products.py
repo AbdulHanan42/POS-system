@@ -2,10 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_permission, require_roles
 from app.models import InventoryStock, Product
 from app.schemas import ProductCreate, ProductDeleteResponse, ProductRead
 
-router = APIRouter(prefix="/products", tags=["products"])
+router = APIRouter(
+    prefix="/products",
+    tags=["products"],
+    dependencies=[Depends(require_permission("catalog:read"))],
+)
 
 
 @router.get("", response_model=list[ProductRead])
@@ -27,6 +32,7 @@ def get_product(
 @router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
 def create_product(
     product_data: ProductCreate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> Product:
     product_values = product_data.model_dump(exclude={"prices"})
@@ -46,6 +52,7 @@ def create_product(
 def update_product(
     product_id: int,
     product_data: ProductCreate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> Product:
     product = session.get(Product, product_id)
@@ -68,6 +75,7 @@ def update_product(
 @router.delete("/{product_id}", response_model=ProductDeleteResponse)
 def delete_product(
     product_id: int,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> ProductDeleteResponse:
     product = session.get(Product, product_id)

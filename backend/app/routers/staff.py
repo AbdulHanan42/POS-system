@@ -2,10 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_roles
 from app.models import StaffMember
 from app.schemas import StaffCreate, StaffRead
 
-router = APIRouter(prefix="/staff", tags=["staff"])
+router = APIRouter(
+    prefix="/staff",
+    tags=["staff"],
+    dependencies=[Depends(require_roles("Administrator", "Manager"))],
+)
 
 
 @router.get("", response_model=list[StaffRead])

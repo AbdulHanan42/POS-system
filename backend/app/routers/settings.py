@@ -1,19 +1,27 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from sqlmodel import Session, select
 
+from app.auth import require_roles
 from app.database import get_session
 from app.models import RestaurantSettings
 from app.schemas import RestaurantSettingsRead, RestaurantSettingsUpdate
 
-router = APIRouter(prefix="/settings", tags=["settings"])
+router = APIRouter(
+    prefix="/settings",
+    tags=["settings"],
+    dependencies=[Depends(require_roles("Administrator", "Manager"))],
+)
 
 
 def get_or_create_settings(session: Session) -> RestaurantSettings:
-    settings = session.get(RestaurantSettings, 1)
+    tenant_id = session.info["tenant_id"]
+    settings = session.exec(
+        select(RestaurantSettings).where(RestaurantSettings.tenantId == tenant_id)
+    ).first()
     if settings is None:
-        settings = RestaurantSettings(id=1)
+        settings = RestaurantSettings(id=tenant_id, tenantId=tenant_id)
         session.add(settings)
         session.commit()
         session.refresh(settings)

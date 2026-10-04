@@ -106,6 +106,94 @@ class StaffRead(StaffCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AuthSignup(BaseModel):
+    tenantName: str = Field(min_length=2, max_length=120)
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=10, max_length=128)
+
+    @field_validator("tenantName", "name")
+    @classmethod
+    def normalize_auth_names(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("This field is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_auth_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]:
+            raise ValueError("Enter a valid email address")
+        return value
+
+
+class AuthLogin(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_login_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class AuthUserCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=10, max_length=128)
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+
+    @field_validator("name")
+    @classmethod
+    def normalize_account_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_account_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]:
+            raise ValueError("Enter a valid email address")
+        return value
+
+
+class AuthUserStatusUpdate(BaseModel):
+    status: Literal["active", "inactive"]
+
+
+class AuthUserRead(BaseModel):
+    id: int
+    tenantId: int
+    tenantName: str
+    name: str
+    email: str
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+    permissions: list[str]
+
+
+class AuthSessionRead(BaseModel):
+    accessToken: str
+    tokenType: Literal["bearer"] = "bearer"
+    expiresAt: datetime
+    user: AuthUserRead
+
+
+class AuthUserListRead(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+    status: Literal["active", "inactive"]
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class RestaurantSettingsUpdate(BaseModel):
     restaurantName: str = Field(min_length=1, max_length=120)
     email: str = Field(default="", max_length=254)

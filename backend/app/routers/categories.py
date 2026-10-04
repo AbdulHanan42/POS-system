@@ -3,10 +3,15 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import require_permission, require_roles
 from app.models import Category, Product
 from app.schemas import CategoryCreate, CategoryDeleteResponse, CategoryRead
 
-router = APIRouter(prefix="/categories", tags=["categories"])
+router = APIRouter(
+    prefix="/categories",
+    tags=["categories"],
+    dependencies=[Depends(require_permission("catalog:read"))],
+)
 
 
 def category_read(category: Category, product_count: int = 0) -> CategoryRead:
@@ -44,6 +49,7 @@ def list_categories(session: Session = Depends(get_session)) -> list[CategoryRea
 @router.post("", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
 def create_category(
     category_data: CategoryCreate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> CategoryRead:
     ensure_unique_name(category_data.name, session)
@@ -58,6 +64,7 @@ def create_category(
 def update_category(
     category_id: int,
     category_data: CategoryCreate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> CategoryRead:
     category = session.get(Category, category_id)
@@ -86,6 +93,7 @@ def update_category(
 @router.delete("/{category_id}", response_model=CategoryDeleteResponse)
 def delete_category(
     category_id: int,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> CategoryDeleteResponse:
     category = session.get(Category, category_id)
