@@ -46,6 +46,19 @@ class RestaurantTable(SQLModel, table=True):
     status: str = Field(default="available", max_length=20, index=True)
 
 
+class StaffMember(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(max_length=120, index=True)
+    email: str = Field(max_length=254, unique=True, index=True)
+    phone: str = Field(default="", max_length=30)
+    role: str = Field(max_length=40, index=True)
+    status: str = Field(default="active", max_length=20, index=True)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
 class ModifierGroup(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(

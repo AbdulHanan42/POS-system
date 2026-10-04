@@ -33,6 +33,7 @@ def create_db_and_tables() -> None:
         Purchase,
         Product,
         RestaurantTable,
+        StaffMember,
     )
 
     SQLModel.metadata.create_all(engine)

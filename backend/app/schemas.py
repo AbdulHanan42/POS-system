@@ -70,6 +70,42 @@ class RestaurantTableRead(RestaurantTableCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StaffCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    phone: str = Field(default="", max_length=30)
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+    status: Literal["active", "inactive"] = "active"
+
+    @field_validator("name")
+    @classmethod
+    def normalize_staff_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Staff name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_staff_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]:
+            raise ValueError("Enter a valid email address")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_staff_phone(cls, value: str) -> str:
+        return value.strip()
+
+
+class StaffRead(StaffCreate):
+    id: int
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TableDeleteResponse(BaseModel):
     message: str
 
