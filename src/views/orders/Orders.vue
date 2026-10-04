@@ -89,7 +89,7 @@ function printOrder() { window.print() }
 			<div class="filter-bar">
 				<label class="search-box"><span aria-hidden="true">/</span><input v-model="search" type="search" placeholder="Search order, customer or table" @input="resetPage" /><kbd>Ctrl K</kbd></label>
 				<select v-model="period" aria-label="Filter by period" @change="resetPage"><option value="all">All time</option><option value="today">Today</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select>
-				<select v-model="status" aria-label="Filter by status" @change="resetPage"><option value="all">All statuses</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select>
+				<select v-model="status" aria-label="Filter by status" @change="resetPage"><option value="all">All statuses</option><option value="awaiting_payment">Awaiting payment</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select>
 				<select v-model="channel" aria-label="Filter by order channel" @change="resetPage"><option value="all">All channels</option><option>Dine in</option><option>Takeaway</option><option>Delivery</option></select>
 				<BaseButton v-if="search || status !== 'all' || channel !== 'all' || period !== 'all'" variant="ghost" @click="clearFilters">Clear filters</BaseButton>
 			</div>
