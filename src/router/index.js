@@ -51,6 +51,9 @@ const router = createRouter({
     { path: '/staff/roles', meta: { permission: '*' }, component: () => import('../views/staff/Roles.vue') },
     { path: '/login', meta: { public: true, layout: 'auth' }, component: () => import('../views/auth/Login.vue') },
     { path: '/signup', meta: { public: true, layout: 'auth' }, component: () => import('../views/auth/SignUp.vue') },
+    { path: '/forgot-password', meta: { public: true, layout: 'auth' }, name: 'forgot-password', component: () => import('../views/auth/ForgotPassword.vue') },
+    { path: '/verify-otp', meta: { public: true, layout: 'auth' }, name: 'verify-otp', component: () => import('../views/auth/VerifyOTP.vue') },
+    { path: '/reset-password', meta: { public: true, layout: 'auth' }, name: 'reset-password', component: () => import('../views/auth/ResetPassword.vue') },
     { path: '/settings', meta: { permission: routePermissions.settings }, component: () => import('../views/settings/GeneralSettings.vue') },
   ],
 })

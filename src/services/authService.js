@@ -11,4 +11,7 @@ export const authService = {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   }),
+  requestPasswordReset: (email) => apiRequest('/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
+  verifyPasswordReset: (email, otp) => apiRequest('/auth/password-reset/verify', { method: 'POST', body: JSON.stringify({ email, otp }) }),
+  confirmPasswordReset: (email, otp, newPassword) => apiRequest('/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ email, otp, newPassword }) }),
 }

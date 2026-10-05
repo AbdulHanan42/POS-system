@@ -55,6 +55,20 @@ class AuthSession(SQLModel, table=True):
     )
 
 
+class PasswordReset(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    email: str = Field(max_length=254, index=True)
+    otp: str = Field(max_length=6)
+    expiresAt: datetime = Field(
+        sa_column=Column("expires_at", DateTime(timezone=True), nullable=False),
+    )
+    used: bool = Field(default=False)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
 class Category(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_category_tenant_name"),)
 
