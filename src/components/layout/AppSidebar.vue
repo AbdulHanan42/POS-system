@@ -2,9 +2,16 @@
 import { LogOut } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
+import { useSettingsStore } from '../../stores/settings.js'
+import { onMounted } from 'vue'
 
 const auth = useAuthStore()
+const settings = useSettingsStore()
 const router = useRouter()
+
+onMounted(() => {
+  settings.load().catch(() => undefined)
+})
 
 async function signOut() {
   await auth.logout()
@@ -17,7 +24,7 @@ async function signOut() {
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">RP</span>
       <span class="brand-copy">
-        <strong>{{ auth.user?.tenantName || 'RestoPilot' }}</strong>
+        <strong>{{ settings.restaurantName || 'RestoPilot' }}</strong>
         <small>Restaurant operations</small>
       </span>
     </div>
@@ -84,7 +91,7 @@ async function signOut() {
       <div class="shift-status">
         <span class="status-dot" aria-hidden="true"></span>
         <span>
-          <strong>{{ auth.user?.tenantName }}</strong>
+          <strong>{{ settings.restaurantName || auth.user?.tenantName }}</strong>
           <small>{{ auth.user?.role }}</small>
         </span>
       </div>
