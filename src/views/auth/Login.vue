@@ -1,13 +1,21 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
+import { useSettingsStore } from '../../stores/settings.js'
 
 const auth = useAuthStore()
+const settings = useSettingsStore()
 const route = useRoute()
 const router = useRouter()
 const email = ref('')
 const password = ref('')
+
+const workspaceName = computed(() => settings.restaurantName || 'RestoPilot')
+
+onMounted(() => {
+  settings.load().catch(() => undefined)
+})
 
 async function submit() {
   try {
@@ -26,7 +34,7 @@ async function submit() {
 
 <template>
   <section class="w-full max-w-md rounded-md border border-border bg-surface p-6 shadow-sm sm:p-8">
-    <p class="text-xs font-bold uppercase tracking-[0.16em] text-brand">RestoPilot workspace</p>
+    <p class="text-xs font-bold uppercase tracking-[0.16em] text-brand">{{ workspaceName }} workspace</p>
     <h1 class="mt-2 text-2xl font-bold text-ink">Sign in</h1>
     <p class="mt-2 text-sm text-muted">Use your restaurant account to continue.</p>
     <form class="mt-6 grid gap-4" @submit.prevent="submit">
