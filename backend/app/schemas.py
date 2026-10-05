@@ -166,6 +166,36 @@ class AuthUserStatusUpdate(BaseModel):
     status: Literal["active", "inactive"]
 
 
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class PasswordResetVerify(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=6)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class PasswordResetConfirm(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=6)
+    newPassword: str = Field(min_length=10, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
 class AuthUserRead(BaseModel):
     id: int
     tenantId: int

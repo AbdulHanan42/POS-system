@@ -1,6 +1,6 @@
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
@@ -16,7 +16,8 @@ from app.auth import (
     verify_password,
 )
 from app.database import get_session
-from app.models import AuthSession, RestaurantSettings, Tenant, UserAccount
+from app.email import send_password_reset_email
+from app.models import AuthSession, PasswordReset, RestaurantSettings, Tenant, UserAccount
 from app.schemas import (
     AuthLogin,
     AuthSessionRead,
@@ -25,6 +26,9 @@ from app.schemas import (
     AuthUserListRead,
     AuthUserRead,
     AuthUserStatusUpdate,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    PasswordResetVerify,
 )
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -206,3 +210,94 @@ def update_account_status(
     session.commit()
     session.refresh(account)
     return account
+
+
+@router.post("/password-reset/request")
+async def request_password_reset(
+    request_data: PasswordResetRequest,
+    session: Session = Depends(get_session),
+) -> dict:
+    user = session.exec(
+        select(UserAccount).where(UserAccount.email == request_data.email)
+    ).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="No account found with this email")
+
+    otp = "".join([str(secrets.randbelow(10)) for _ in range(6)])
+    expires_at = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+
+    existing_reset = session.exec(
+        select(PasswordReset).where(PasswordReset.email == request_data.email)
+    ).first()
+    if existing_reset:
+        existing_reset.otp = otp
+        existing_reset.expiresAt = expires_at
+        existing_reset.used = False
+        session.add(existing_reset)
+    else:
+        password_reset = PasswordReset(
+            email=request_data.email,
+            otp=otp,
+            expiresAt=expires_at,
+        )
+        session.add(password_reset)
+
+    session.commit()
+    email_sent = await send_password_reset_email(request_data.email, otp)
+    return {"message": "OTP sent to your email" if email_sent else "OTP generated (check console if email not configured)"}
+
+
+@router.post("/password-reset/verify")
+def verify_password_reset(
+    verify_data: PasswordResetVerify,
+    session: Session = Depends(get_session),
+) -> dict:
+    password_reset = session.exec(
+        select(PasswordReset).where(
+            PasswordReset.email == verify_data.email,
+            PasswordReset.otp == verify_data.otp,
+        )
+    ).first()
+
+    if password_reset is None:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    if password_reset.used:
+        raise HTTPException(status_code=400, detail="OTP already used")
+    if password_reset.expiresAt < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    return {"message": "OTP verified successfully"}
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    confirm_data: PasswordResetConfirm,
+    session: Session = Depends(get_session),
+) -> dict:
+    password_reset = session.exec(
+        select(PasswordReset).where(
+            PasswordReset.email == confirm_data.email,
+            PasswordReset.otp == confirm_data.otp,
+        )
+    ).first()
+
+    if password_reset is None:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    if password_reset.used:
+        raise HTTPException(status_code=400, detail="OTP already used")
+    if password_reset.expiresAt < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    user = session.exec(
+        select(UserAccount).where(UserAccount.email == confirm_data.email)
+    ).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.passwordHash = hash_password(confirm_data.newPassword)
+    password_reset.used = True
+    session.add(user)
+    session.add(password_reset)
+    session.commit()
+
+    return {"message": "Password reset successfully"}

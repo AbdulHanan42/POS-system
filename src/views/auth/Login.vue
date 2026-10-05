@@ -44,5 +44,6 @@ async function submit() {
       <button type="submit" class="mt-1 min-h-11 rounded-sm bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50" :disabled="auth.loading">{{ auth.loading ? 'Signing in...' : 'Sign in' }}</button>
     </form>
     <p class="mt-5 border-t border-border pt-4 text-sm text-muted">New restaurant? <RouterLink to="/signup" class="font-semibold text-brand hover:underline">Create a workspace</RouterLink></p>
+    <p class="mt-2 text-sm text-muted"><RouterLink to="/forgot-password" class="font-semibold text-brand hover:underline">Forgot password?</RouterLink></p>
   </section>
 </template>
