@@ -15,6 +15,7 @@ import { useAuthStore } from "../../stores/auth.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useModifierStore } from "../../stores/modifier.js";
 import { useProductStore } from "../../stores/product.js";
+import { useDeliveryStore } from "../../stores/delivery.js";
 
 const cart = useCartStore();
 const orders = useOrderStore();
@@ -24,10 +25,14 @@ const categoryStore = useCategoryStore();
 const inventoryStore = useInventoryStore();
 const modifierStore = useModifierStore();
 const settingsStore = useSettingsStore();
+const deliveryStore = useDeliveryStore();
 const search = ref("");
 const activeCategory = ref("All");
 const orderType = ref("Dine in");
 const table = ref("Table 01");
+const deliveryAddress = ref("");
+const deliveryZone = ref("");
+const deliveryNotes = ref("");
 const discount = ref(0);
 const showPayment = ref(false);
 const showReceipt = ref(false);
@@ -62,6 +67,7 @@ onMounted(() => {
   inventoryStore.load().catch(() => undefined);
   modifierStore.load().catch(() => undefined);
   settingsStore.load().catch(() => undefined);
+  deliveryStore.loadZones().catch(() => undefined);
   orders.loadOrders().catch(() => undefined);
   orderRefreshTimer = window.setInterval(() => orders.loadOrders().catch(() => undefined), 15000);
 });
@@ -81,9 +87,19 @@ const discountedTotal = computed(() => Math.max(0, cart.total - discount.value) 
 
 async function sendOrderToKitchen() {
   if (!cart.items.length) return;
+  if (orderType.value === "Delivery" && !deliveryAddress.value) {
+    orderError.value = "Please enter a delivery address";
+    return;
+  }
+  if (orderType.value === "Delivery" && !deliveryZone.value) {
+    orderError.value = "Please select a delivery zone";
+    return;
+  }
   orderError.value = "";
   sendingToKitchen.value = true;
   try {
+    const selectedZone = deliveryStore.zones.find(z => z.name === deliveryZone.value);
+    const deliveryFee = selectedZone ? Number(selectedZone.fee) : 0;
     const order = await orders.sendToKitchen({
       createdAt: new Date().toISOString(),
       type: orderType.value,
@@ -92,9 +108,16 @@ async function sendOrderToKitchen() {
       discount: Number(discount.value),
       taxRate: Number(settingsStore.taxRate),
       items: cart.items.map(({ id, name, quantity, price, selectedSize, modifiers }) => ({ productId: id, name, quantity, price, selectedSize, modifiers })),
+      deliveryAddress: orderType.value === "Delivery" ? deliveryAddress.value : null,
+      deliveryZone: orderType.value === "Delivery" ? deliveryZone.value : null,
+      deliveryFee: orderType.value === "Delivery" ? deliveryFee : 0,
+      deliveryNotes: orderType.value === "Delivery" ? deliveryNotes.value : null,
     });
     cart.clear();
     discount.value = 0;
+    deliveryAddress.value = "";
+    deliveryZone.value = "";
+    deliveryNotes.value = "";
     notice.value = `Order #${order.id} sent to the kitchen. Payment is due when it is ready.`;
     window.setTimeout(() => { notice.value = ""; }, 6000);
   } catch (error) {
@@ -204,6 +227,27 @@ function finishOrder() {
           <option>Table 02</option>
           <option>Table 03</option>
           <option>Table 04</option></select
+        ><div v-if="orderType === 'Delivery'" class="flex gap-2">
+          <input
+            v-model="deliveryAddress"
+            type="text"
+            placeholder="Delivery address"
+            class="h-10 flex-1 rounded-sm border border-border bg-surface px-3 text-sm text-ink outline-none focus:border-brand"
+          />
+          <select
+            v-model="deliveryZone"
+            class="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-ink outline-none focus:border-brand"
+          >
+            <option value="">Select zone</option>
+            <option v-for="zone in deliveryStore.zones.filter(z => z.status === 'active')" :key="zone.id" :value="zone.name">{{ zone.name }} (${{ zone.fee }})</option>
+          </select>
+          <input
+            v-model="deliveryNotes"
+            type="text"
+            placeholder="Delivery notes (optional)"
+            class="h-10 w-48 rounded-sm border border-border bg-surface px-3 text-sm text-ink outline-none focus:border-brand"
+          />
+        </div
         ><span
           class="rounded-full bg-green-50 px-3 py-2 text-xs font-semibold text-success"
           >Register open</span
