@@ -126,6 +126,11 @@ def create_kitchen_order(
     total = (
         (subtotal - order_data.discount) * (Decimal("1.00") + order_data.taxRate)
     ).quantize(Decimal("0.01"))
+    
+    # Add delivery fee to total if applicable
+    if order_data.deliveryFee:
+        total = (total + order_data.deliveryFee).quantize(Decimal("0.01"))
+    
     order = Order(
         createdAt=order_data.createdAt or datetime.now(timezone.utc),
         status="awaiting_payment",
@@ -138,6 +143,10 @@ def create_kitchen_order(
         taxRate=order_data.taxRate,
         total=total,
         items=item_values,
+        deliveryAddress=order_data.deliveryAddress,
+        deliveryZone=order_data.deliveryZone,
+        deliveryFee=order_data.deliveryFee,
+        deliveryNotes=order_data.deliveryNotes,
     )
     session.add(order)
     session.commit()

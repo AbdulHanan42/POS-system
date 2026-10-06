@@ -436,6 +436,10 @@ class KitchenOrderCreate(BaseModel):
     discount: Decimal = Field(default=Decimal("0.00"), ge=0)
     taxRate: Decimal = Field(default=Decimal("0.1000"), ge=0, le=1)
     items: list[OrderItemCreate] = Field(min_length=1)
+    deliveryAddress: str | None = Field(None, max_length=300)
+    deliveryZone: str | None = Field(None, max_length=80)
+    deliveryFee: Decimal = Field(default=Decimal("0.00"), ge=0)
+    deliveryNotes: str | None = Field(None, max_length=500)
 
 
 class OrderStatusUpdate(BaseModel):
@@ -547,6 +551,36 @@ class SalesReportRead(BaseModel):
     summary: SalesReportSummary
     salesByDay: list[SalesReportDay]
     topProducts: list[SalesReportProduct]
-    paymentMethods: list[SalesReportBreakdown]
-    orderTypes: list[SalesReportBreakdown]
-    recentOrders: list[SalesReportTransaction]
+    breakdown: list[SalesReportBreakdown]
+    transactions: list[SalesReportTransaction]
+
+
+class DeliveryZoneCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=240)
+    fee: float = Field(ge=0)
+    minOrderAmount: float = Field(ge=0)
+    estimatedTime: int = Field(ge=5, description="Estimated delivery time in minutes")
+    status: Literal["active", "inactive"] = "active"
+
+
+class DeliveryZoneRead(DeliveryZoneCreate):
+    id: int
+    tenantId: int
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DeliveryZoneUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=80)
+    description: str | None = Field(None, max_length=240)
+    fee: float | None = Field(None, ge=0)
+    minOrderAmount: float | None = Field(None, ge=0)
+    estimatedTime: int | None = Field(None, ge=5)
+    status: Literal["active", "inactive"] | None = None
+
+
+class DeliveryStatusUpdate(BaseModel):
+    deliveryStatus: Literal["pending", "preparing", "out_for_delivery", "delivered", "cancelled"]
+    actualDeliveryTime: datetime | None = None
