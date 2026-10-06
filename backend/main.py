@@ -6,12 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import create_db_and_tables
 from app.routers.dashboard import router as dashboard_router
 from app.routers.categories import router as categories_router
+from app.routers.auth import router as auth_router
+from app.routers.auth import router as auth_router
 from app.routers.inventory import router as inventory_router
 from app.routers.modifiers import router as modifiers_router
 from app.routers.orders import router as orders_router
 from app.routers.products import router as products_router
 from app.routers.purchases import router as purchases_router
 from app.routers.reports import router as reports_router
+from app.routers.settings import router as settings_router
 from app.routers.staff import router as staff_router
 from app.routers.tables import router as tables_router
 from app.seed import seed_categories, seed_inventory, seed_products, seed_tables
@@ -36,6 +39,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(products_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 app.include_router(orders_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(categories_router, prefix="/api")
@@ -45,6 +50,7 @@ app.include_router(inventory_router, prefix="/api")
 app.include_router(purchases_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
 app.include_router(staff_router, prefix="/api")
+app.include_router(settings_router, prefix="/api")
 
 
 @app.get("/")

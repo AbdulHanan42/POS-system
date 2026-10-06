@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.auth import get_current_user, require_permission, require_roles
 from app.inventory import apply_inventory_movement, get_or_create_stock
 from app.models import Order, Product
 from app.schemas import (
@@ -16,7 +17,11 @@ from app.schemas import (
     OrderStatusUpdate,
 )
 
-router = APIRouter(prefix="/orders", tags=["orders"])
+router = APIRouter(
+    prefix="/orders",
+    tags=["orders"],
+    dependencies=[Depends(get_current_user)],
+)
 KITCHEN_ORDER_STATUSES = {"awaiting_payment", "paid"}
 KITCHEN_TRANSITIONS = {
     "queued": "preparing",
@@ -26,12 +31,19 @@ KITCHEN_TRANSITIONS = {
 
 
 @router.get("", response_model=list[OrderRead])
-def list_orders(session: Session = Depends(get_session)) -> list[Order]:
+def list_orders(
+    user=Depends(require_permission("orders:read")),
+    session: Session = Depends(get_session),
+) -> list[Order]:
     return list(session.exec(select(Order).order_by(Order.createdAt.desc())).all())
 
 
 @router.get("/{order_id}", response_model=OrderRead)
-def get_order(order_id: int, session: Session = Depends(get_session)) -> Order:
+def get_order(
+    order_id: int,
+    user=Depends(require_permission("orders:read")),
+    session: Session = Depends(get_session),
+) -> Order:
     order = session.get(Order, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -41,6 +53,7 @@ def get_order(order_id: int, session: Session = Depends(get_session)) -> Order:
 @router.post("", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_data: OrderCreate,
+    user=Depends(require_roles("Administrator", "Manager", "Cashier")),
     session: Session = Depends(get_session),
 ) -> Order:
     ordered_quantities: dict[int, int] = {}
@@ -91,6 +104,7 @@ def create_order(
 @router.post("/kitchen", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
 def create_kitchen_order(
     order_data: KitchenOrderCreate,
+    user=Depends(require_permission("orders:create")),
     session: Session = Depends(get_session),
 ) -> Order:
     subtotal = Decimal("0.00")
@@ -109,7 +123,9 @@ def create_kitchen_order(
 
     if order_data.discount > subtotal:
         raise HTTPException(status_code=422, detail="Discount cannot exceed the subtotal")
-    total = ((subtotal - order_data.discount) * Decimal("1.10")).quantize(Decimal("0.01"))
+    total = (
+        (subtotal - order_data.discount) * (Decimal("1.00") + order_data.taxRate)
+    ).quantize(Decimal("0.01"))
     order = Order(
         createdAt=order_data.createdAt or datetime.now(timezone.utc),
         status="awaiting_payment",
@@ -119,6 +135,7 @@ def create_kitchen_order(
         customer=order_data.customer,
         paymentMethod="Pending",
         discount=order_data.discount,
+        taxRate=order_data.taxRate,
         total=total,
         items=item_values,
     )
@@ -132,6 +149,7 @@ def create_kitchen_order(
 def update_order_status(
     order_id: int,
     status_data: OrderStatusUpdate,
+    user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> Order:
     order = session.get(Order, order_id)
@@ -168,6 +186,7 @@ def update_order_status(
 def complete_kitchen_order_payment(
     order_id: int,
     payment_data: OrderPaymentCreate,
+    user=Depends(require_permission("orders:payment")),
     session: Session = Depends(get_session),
 ) -> Order:
     order = session.exec(
@@ -221,6 +240,7 @@ def complete_kitchen_order_payment(
 def update_kitchen_status(
     order_id: int,
     status_data: KitchenStatusUpdate,
+    user=Depends(require_permission("kitchen:update")),
     session: Session = Depends(get_session),
 ) -> Order:
     order = session.exec(

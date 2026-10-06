@@ -1,19 +1,25 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import AuthLayout from './layouts/AuthLayout.vue'
 import DefaultLayout from './layouts/DefaultLayout.vue'
+import { useAuthStore } from './stores/auth.js'
 import { useProductStore } from './stores/product.js'
 
+const authStore = useAuthStore()
 const productStore = useProductStore()
+const route = useRoute()
+const activeLayout = computed(() => route.meta.layout === 'auth' ? AuthLayout : DefaultLayout)
 
-onMounted(async () => {
-  try {
-    await productStore.loadProducts()
-  } catch {
-    // The store retains the API error for product screens to display.
+watch(() => authStore.user?.id, async (userId) => {
+  if (!userId) {
+    productStore.items = []
+    return
   }
-})
+  await productStore.loadProducts().catch(() => undefined)
+}, { immediate: true })
 </script>
 
 <template>
-  <DefaultLayout />
+  <component :is="activeLayout" />
 </template>

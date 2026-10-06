@@ -106,6 +106,161 @@ class StaffRead(StaffCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AuthSignup(BaseModel):
+    tenantName: str = Field(min_length=2, max_length=120)
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=10, max_length=128)
+
+    @field_validator("tenantName", "name")
+    @classmethod
+    def normalize_auth_names(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("This field is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_auth_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]:
+            raise ValueError("Enter a valid email address")
+        return value
+
+
+class AuthLogin(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_login_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class AuthUserCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=10, max_length=128)
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+
+    @field_validator("name")
+    @classmethod
+    def normalize_account_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_account_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]:
+            raise ValueError("Enter a valid email address")
+        return value
+
+
+class AuthUserStatusUpdate(BaseModel):
+    status: Literal["active", "inactive"]
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class PasswordResetVerify(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=6)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class PasswordResetConfirm(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=6)
+    newPassword: str = Field(min_length=10, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class AuthUserRead(BaseModel):
+    id: int
+    tenantId: int
+    tenantName: str
+    name: str
+    email: str
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+    permissions: list[str]
+
+
+class AuthSessionRead(BaseModel):
+    accessToken: str
+    tokenType: Literal["bearer"] = "bearer"
+    expiresAt: datetime
+    user: AuthUserRead
+
+
+class AuthUserListRead(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]
+    status: Literal["active", "inactive"]
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RestaurantSettingsUpdate(BaseModel):
+    restaurantName: str = Field(min_length=1, max_length=120)
+    email: str = Field(default="", max_length=254)
+    phone: str = Field(default="", max_length=30)
+    address: str = Field(default="", max_length=240)
+    taxRate: Decimal = Field(ge=0, le=1)
+    receiptFooter: str = Field(default="", max_length=240)
+
+    @field_validator("restaurantName")
+    @classmethod
+    def normalize_restaurant_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Restaurant name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def validate_settings_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value and (value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]):
+            raise ValueError("Enter a valid email address")
+        return value
+
+    @field_validator("phone", "address", "receiptFooter")
+    @classmethod
+    def normalize_settings_text(cls, value: str) -> str:
+        return value.strip()
+
+
+class RestaurantSettingsRead(RestaurantSettingsUpdate):
+    id: int
+    updatedAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TableDeleteResponse(BaseModel):
     message: str
 
@@ -268,6 +423,7 @@ class OrderCreate(BaseModel):
     customer: str = Field(min_length=1, max_length=120)
     paymentMethod: Literal["Cash", "Card", "Mobile money"]
     discount: Decimal = Field(default=Decimal("0.00"), ge=0)
+    taxRate: Decimal = Field(default=Decimal("0.1000"), ge=0, le=1)
     total: Decimal = Field(ge=0)
     items: list[OrderItemCreate] = Field(min_length=1)
 
@@ -278,6 +434,7 @@ class KitchenOrderCreate(BaseModel):
     table: str = Field(default="", max_length=80)
     customer: str = Field(min_length=1, max_length=120)
     discount: Decimal = Field(default=Decimal("0.00"), ge=0)
+    taxRate: Decimal = Field(default=Decimal("0.1000"), ge=0, le=1)
     items: list[OrderItemCreate] = Field(min_length=1)
 
 
@@ -307,6 +464,7 @@ class OrderRead(BaseModel):
     customer: str
     paymentMethod: str
     discount: float = 0
+    taxRate: float = 0.1
     total: float
     items: list[OrderItemRead]
 

@@ -11,15 +11,19 @@ import { useCartStore } from "../../stores/cart.js";
 import { useCategoryStore } from "../../stores/category.js";
 import { useInventoryStore } from "../../stores/inventory.js";
 import { useOrderStore } from "../../stores/order.js";
+import { useAuthStore } from "../../stores/auth.js";
+import { useSettingsStore } from "../../stores/settings.js";
 import { useModifierStore } from "../../stores/modifier.js";
 import { useProductStore } from "../../stores/product.js";
 
 const cart = useCartStore();
 const orders = useOrderStore();
+const auth = useAuthStore();
 const productStore = useProductStore();
 const categoryStore = useCategoryStore();
 const inventoryStore = useInventoryStore();
 const modifierStore = useModifierStore();
+const settingsStore = useSettingsStore();
 const search = ref("");
 const activeCategory = ref("All");
 const orderType = ref("Dine in");
@@ -48,6 +52,7 @@ const receiptSubtotal = computed(() => receiptOrder.value
   : cart.total);
 const receiptDiscount = computed(() => receiptOrder.value?.discount ?? discount.value);
 const receiptTotal = computed(() => receiptOrder.value?.total ?? discountedTotal.value);
+const receiptTaxRate = computed(() => Number(receiptOrder.value?.taxRate ?? settingsStore.taxRate));
 const receiptType = computed(() => receiptOrder.value?.type ?? orderType.value);
 const receiptTable = computed(() => receiptOrder.value?.table ?? (orderType.value === "Dine in" ? table.value : ""));
 let orderRefreshTimer;
@@ -56,6 +61,7 @@ onMounted(() => {
   if (!categoryStore.items.length) categoryStore.load().catch(() => undefined);
   inventoryStore.load().catch(() => undefined);
   modifierStore.load().catch(() => undefined);
+  settingsStore.load().catch(() => undefined);
   orders.loadOrders().catch(() => undefined);
   orderRefreshTimer = window.setInterval(() => orders.loadOrders().catch(() => undefined), 15000);
 });
@@ -71,7 +77,7 @@ const filteredProducts = computed(() =>
     );
   })
 );
-const discountedTotal = computed(() => Math.max(0, cart.total - discount.value) * 1.1);
+const discountedTotal = computed(() => Math.max(0, cart.total - discount.value) * (1 + Number(settingsStore.taxRate)));
 
 async function sendOrderToKitchen() {
   if (!cart.items.length) return;
@@ -84,6 +90,7 @@ async function sendOrderToKitchen() {
       table: orderType.value === "Dine in" ? table.value : "",
       customer: "Walk-in customer",
       discount: Number(discount.value),
+      taxRate: Number(settingsStore.taxRate),
       items: cart.items.map(({ id, name, quantity, price, selectedSize, modifiers }) => ({ productId: id, name, quantity, price, selectedSize, modifiers })),
     });
     cart.clear();
@@ -123,6 +130,7 @@ async function completePayment(paymentDetails) {
         customer: "Walk-in customer",
         paymentMethod: paymentDetails.method,
         discount: Number(discount.value),
+        taxRate: Number(settingsStore.taxRate),
         total: discountedTotal.value,
         items: cart.items.map(({ id, name, quantity, price, selectedSize, modifiers }) => ({ productId: id, name, quantity, price, selectedSize, modifiers })),
       });
@@ -175,7 +183,7 @@ function finishOrder() {
     >
       <div>
         <p class="text-xs font-bold uppercase tracking-[0.16em] text-brand">
-          Front counter
+          {{ settingsStore.restaurantName }}
         </p>
         <h1 class="mt-1 text-2xl font-bold text-ink">Point of Sale</h1>
       </div>
@@ -208,7 +216,7 @@ function finishOrder() {
     >
       {{ notice }}
     </p>
-    <section v-if="readyKitchenOrders.length" class="mx-5 mt-4 rounded-md border border-success/30 bg-success/5 px-4 py-4 lg:mx-8" aria-labelledby="ready-payments-heading">
+    <section v-if="auth.can('orders:payment') && readyKitchenOrders.length" class="mx-5 mt-4 rounded-md border border-success/30 bg-success/5 px-4 py-4 lg:mx-8" aria-labelledby="ready-payments-heading">
       <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><p class="text-xs font-bold uppercase tracking-[0.14em] text-success">Kitchen ready</p><h2 id="ready-payments-heading" class="mt-1 text-base font-bold text-ink">Ready for payment</h2></div><span class="text-xs text-muted">{{ readyKitchenOrders.length }} {{ readyKitchenOrders.length === 1 ? 'order' : 'orders' }}</span></div>
       <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3"><article v-for="order in readyKitchenOrders" :key="order.id" class="flex items-center justify-between gap-3 rounded-sm border border-border bg-surface px-3 py-3"><div class="min-w-0"><strong class="block truncate text-sm text-ink">Order #{{ order.id }} · {{ order.table || order.type }}</strong><span class="mt-1 block text-xs text-muted">{{ order.items.reduce((sum, item) => sum + item.quantity, 0) }} items · ${{ Number(order.total).toFixed(2) }}</span></div><BaseButton class="shrink-0 px-3 text-xs" @click="continueToPayment(order)">Continue to payment</BaseButton></article></div>
     </section>
@@ -254,9 +262,11 @@ function finishOrder() {
         :items="cart.items"
         :subtotal="cart.total"
         :discount="discount"
+        :tax-rate="Number(settingsStore.taxRate)"
         :order-type="orderType"
         :table="table"
         :sending-to-kitchen="sendingToKitchen"
+        :allow-direct-checkout="auth.can('orders:payment')"
         @increment="cart.addItem"
         @decrement="cart.decreaseItem"
         @remove="cart.removeItem"
@@ -281,7 +291,10 @@ function finishOrder() {
       :items="receiptItems"
       :subtotal="receiptSubtotal"
       :discount="receiptDiscount"
+      :tax-rate="receiptTaxRate"
       :total="receiptTotal"
+      :restaurant-name="settingsStore.restaurantName"
+      :receipt-footer="settingsStore.receiptFooter"
       :order-type="receiptType"
       :table="receiptTable"
       :paid="Boolean(receiptOrder?.status === 'paid')"
