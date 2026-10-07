@@ -1,11 +1,13 @@
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.auth import get_current_user, require_roles
 from app.database import get_session
-from app.models import DeliveryZone, Order, UserAccount
+from app.event_hub import order_events
+from app.inventory import apply_inventory_movement, get_or_create_stock
+from app.models import DeliveryZone, Order, Product, UserAccount
 from app.schemas import (
     DeliveryZoneCreate,
     DeliveryZoneRead,
@@ -153,6 +155,7 @@ def list_delivery_orders(
 def update_delivery_status(
     order_id: int,
     update: DeliveryStatusUpdate,
+    background_tasks: BackgroundTasks,
     user: UserAccount = Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> Order:
@@ -164,6 +167,49 @@ def update_delivery_status(
     ).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    completes_website_cod = (
+        update.deliveryStatus == "delivered"
+        and order.source == "website"
+        and order.paymentMethod == "Cash"
+        and order.status == "awaiting_payment"
+        and order.deliveryStatus != "delivered"
+    )
+    if completes_website_cod:
+        if order.kitchenStatus != "ready":
+            raise HTTPException(status_code=409, detail="The kitchen must mark this order ready before delivery completion")
+
+        quantities: dict[int, int] = {}
+        products: dict[int, Product] = {}
+        stocks = {}
+        for item in order.items:
+            product_id = item.get("productId")
+            if product_id is None:
+                continue
+            product = session.get(Product, product_id)
+            if product is None:
+                raise HTTPException(status_code=409, detail="An ordered product no longer exists")
+            products[product_id] = product
+            quantities[product_id] = quantities.get(product_id, 0) + int(item["quantity"])
+            stocks[product_id] = get_or_create_stock(session, product_id)
+
+        for product_id, quantity in quantities.items():
+            if stocks[product_id].quantity < quantity:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Not enough stock for {products[product_id].name} ({stocks[product_id].quantity} available)",
+                )
+
+        for product_id, quantity in quantities.items():
+            apply_inventory_movement(
+                session,
+                products[product_id],
+                "sale",
+                quantity,
+                f"Website order #{order.id}",
+            )
+        order.status = "paid"
+        order.kitchenStatus = "completed"
 
     order.deliveryStatus = update.deliveryStatus
 
@@ -184,4 +230,5 @@ def update_delivery_status(
     session.add(order)
     session.commit()
     session.refresh(order)
+    background_tasks.add_task(order_events.order_updated, order.tenantId, order.id, order.status, order.kitchenStatus, order.deliveryStatus)
     return order

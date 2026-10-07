@@ -37,7 +37,7 @@ const periodStart = computed(() => {
 const filteredOrders = computed(() => {
 	const query = search.value.trim().toLowerCase()
 	return orderStore.orders.filter((order) => {
-		const searchable = `${order.id} ${order.customer} ${order.type} ${order.table} ${order.paymentMethod}`.toLowerCase()
+		const searchable = `${order.id} ${order.customer} ${order.customerPhone || ''} ${order.type} ${order.table} ${order.paymentMethod} ${order.source || ''}`.toLowerCase()
 		const matchesSearch = !query || searchable.includes(query)
 		const matchesStatus = status.value === 'all' || order.status === status.value
 		const matchesChannel = channel.value === 'all' || order.type === channel.value
@@ -97,7 +97,13 @@ function printOrder() { window.print() }
 
 			<div v-if="pagedOrders.length" class="orders-table">
 				<div class="order-row order-row--head"><span>Order</span><span>Customer</span><span>Channel</span><span>Payment</span><span>Total</span><span>Status</span><span></span></div>
-				<button v-for="order in pagedOrders" :key="order.id" type="button" class="order-row order-row--button" @click="openOrder(order)"><span class="order-id"><strong>#{{ order.id }}</strong><small>{{ relativeTime(order.createdAt) }}</small></span><span><strong>{{ order.customer }}</strong><small v-if="order.table">{{ order.table }}</small></span><span>{{ order.type }}</span><span>{{ order.paymentMethod }}</span><strong>{{ formatCurrency(order.total) }}</strong><span class="status-pill" :class="`status-pill--${order.status}`">{{ order.status }}</span><span class="view-arrow" aria-hidden="true">-&gt;</span></button>
+				<button v-for="order in pagedOrders" :key="order.id" type="button" class="order-row order-row--button" @click="openOrder(order)">
+					<span class="order-id"><strong>#{{ order.id }}</strong><small>{{ relativeTime(order.createdAt) }}</small></span>
+					<span><strong>{{ order.customer }}</strong><small v-if="order.customerPhone">{{ order.customerPhone }}</small><small v-else-if="order.table">{{ order.table }}</small></span>
+					<span>{{ order.type }}<small v-if="order.source === 'website'" class="online-source">Online website</small></span>
+					<span>{{ order.paymentMethod }}</span><strong>{{ formatCurrency(order.total) }}</strong>
+					<span class="status-pill" :class="`status-pill--${order.status}`">{{ order.status }}</span><span class="view-arrow" aria-hidden="true">-&gt;</span>
+				</button>
 			</div>
 			<div v-else class="empty-state"><span class="empty-icon">?</span><h2>No matching orders</h2><p>Try a different search or clear the filters to see your order history.</p><BaseButton variant="secondary" @click="clearFilters">Reset filters</BaseButton></div>
 
