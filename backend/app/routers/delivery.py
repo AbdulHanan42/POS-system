@@ -168,6 +168,13 @@ def update_delivery_status(
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
+    if (
+        update.deliveryStatus == "out_for_delivery"
+        and order.source == "website"
+        and order.kitchenStatus != "ready"
+    ):
+        raise HTTPException(status_code=409, detail="The kitchen must mark this order ready before dispatch")
+
     completes_website_cod = (
         update.deliveryStatus == "delivered"
         and order.source == "website"
@@ -176,8 +183,8 @@ def update_delivery_status(
         and order.deliveryStatus != "delivered"
     )
     if completes_website_cod:
-        if order.kitchenStatus != "ready":
-            raise HTTPException(status_code=409, detail="The kitchen must mark this order ready before delivery completion")
+        if order.deliveryStatus != "out_for_delivery":
+            raise HTTPException(status_code=409, detail="Set the order to out for delivery before marking it delivered")
 
         quantities: dict[int, int] = {}
         products: dict[int, Product] = {}
