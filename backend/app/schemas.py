@@ -490,7 +490,7 @@ class PublicOrderStatus(BaseModel):
     id: int
     status: Literal["awaiting_payment", "paid", "refunded"]
     kitchenStatus: Literal["queued", "preparing", "ready", "completed"]
-    deliveryStatus: Literal["pending", "preparing", "out_for_delivery", "delivered", "cancelled"]
+    deliveryStatus: Literal["pending", "confirmed", "preparing", "ready", "out_for_delivery", "delivered", "cancelled"]
     total: float
     estimatedDeliveryTime: datetime | None = None
 
@@ -529,7 +529,7 @@ class OrderRead(BaseModel):
     deliveryAddress: str | None = None
     deliveryZone: str | None = None
     deliveryFee: float = 0
-    deliveryStatus: Literal["pending", "preparing", "out_for_delivery", "delivered", "cancelled"] = "pending"
+    deliveryStatus: Literal["pending", "confirmed", "preparing", "ready", "out_for_delivery", "delivered", "cancelled"] = "pending"
     deliveryNotes: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -642,5 +642,5 @@ class DeliveryZoneUpdate(BaseModel):
 
 
 class DeliveryStatusUpdate(BaseModel):
-    deliveryStatus: Literal["pending", "preparing", "out_for_delivery", "delivered", "cancelled"]
+    deliveryStatus: Literal["pending", "confirmed", "preparing", "ready", "out_for_delivery", "delivered", "cancelled"]
     actualDeliveryTime: datetime | None = None
