@@ -50,6 +50,7 @@ const router = createRouter({
     { path: '/staff', meta: { permission: routePermissions.staff }, component: () => import('../views/staff/Staff.vue') },
     { path: '/staff/roles', meta: { permission: '*' }, component: () => import('../views/staff/Roles.vue') },
     { path: '/login', meta: { public: true, layout: 'auth' }, component: () => import('../views/auth/Login.vue') },
+    { path: '/order', meta: { customerSite: true }, component: () => import('../views/public/OrderOnline.vue') },
     { path: '/signup', meta: { public: true, layout: 'auth' }, component: () => import('../views/auth/SignUp.vue') },
     { path: '/forgot-password', meta: { public: true, layout: 'auth' }, name: 'forgot-password', component: () => import('../views/auth/ForgotPassword.vue') },
     { path: '/verify-otp', meta: { public: true, layout: 'auth' }, name: 'verify-otp', component: () => import('../views/auth/VerifyOTP.vue') },
@@ -60,6 +61,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  if (to.meta.customerSite) return true
   const auth = useAuthStore()
   const authenticated = await auth.initialize()
   if (to.meta.public) return authenticated ? landingRoute(auth) : true

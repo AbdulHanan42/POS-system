@@ -442,6 +442,30 @@ class KitchenOrderCreate(BaseModel):
     deliveryNotes: str | None = Field(None, max_length=500)
 
 
+class PublicDeliveryOrderCreate(BaseModel):
+    customer: str = Field(min_length=2, max_length=120)
+    phone: str = Field(min_length=7, max_length=30)
+    deliveryAddress: str = Field(min_length=8, max_length=300)
+    deliveryZone: str = Field(min_length=1, max_length=80)
+    deliveryNotes: str | None = Field(default=None, max_length=500)
+    items: list[OrderItemCreate] = Field(min_length=1)
+
+    @field_validator("customer", "phone", "deliveryAddress", "deliveryZone")
+    @classmethod
+    def normalize_public_fields(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("This field is required")
+        return value
+
+
+class PublicOrderConfirmation(BaseModel):
+    id: int
+    status: str
+    total: float
+    estimatedTime: int
+
+
 class OrderStatusUpdate(BaseModel):
     status: Literal["paid", "refunded"]
 
@@ -471,6 +495,11 @@ class OrderRead(BaseModel):
     taxRate: float = 0.1
     total: float
     items: list[OrderItemRead]
+    deliveryAddress: str | None = None
+    deliveryZone: str | None = None
+    deliveryFee: float = 0
+    deliveryStatus: Literal["pending", "preparing", "out_for_delivery", "delivered", "cancelled"] = "pending"
+    deliveryNotes: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

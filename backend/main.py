@@ -18,6 +18,7 @@ from app.routers.settings import router as settings_router
 from app.routers.staff import router as staff_router
 from app.routers.tables import router as tables_router
 from app.routers.delivery import router as delivery_router
+from app.routers.public import router as public_router
 from app.seed import seed_categories, seed_inventory, seed_products, seed_tables
 
 
@@ -53,6 +54,7 @@ app.include_router(reports_router, prefix="/api")
 app.include_router(staff_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(delivery_router, prefix="/api")
+app.include_router(public_router, prefix="/api")
 
 
 @app.get("/")
