@@ -22,6 +22,8 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 def tenant_models():
     from app.models import (
         Category,
+        Customer,
+        CustomerAddress,
         DeliveryZone,
         InventoryMovement,
         InventoryStock,
@@ -36,6 +38,8 @@ def tenant_models():
 
     return (
         Category,
+        Customer,
+        CustomerAddress,
         DeliveryZone,
         Product,
         RestaurantTable,
@@ -86,6 +90,9 @@ def create_db_and_tables() -> None:
     from app.models import (
         AuthSession,
         Category,
+        Customer,
+        CustomerAddress,
+        CustomerSession,
         InventoryMovement,
         InventoryStock,
         ModifierGroup,
@@ -206,6 +213,7 @@ def create_db_and_tables() -> None:
             )
         for column_name, column_type in {
             "customer_phone": "VARCHAR(30)",
+            "customer_id": "INTEGER",
             "source": "VARCHAR(20) NOT NULL DEFAULT 'pos'",
             "public_tracking_token": "VARCHAR(64)",
         }.items():
@@ -214,3 +222,64 @@ def create_db_and_tables() -> None:
                     f'ALTER TABLE "{Order.__tablename__}" '
                     f'ADD COLUMN "{column_name}" {column_type}'
                 ))
+        
+        # Add foreign key for customer_id if it exists
+        if "customer_id" in columns:
+            foreign_keys = [fk["constrained_columns"] for fk in inspect(connection).get_foreign_keys(Order.__tablename__)]
+            has_customer_fk = any("customer_id" in fk for fk in foreign_keys)
+            if not has_customer_fk:
+                connection.execute(
+                    text(
+                        f'ALTER TABLE "{Order.__tablename__}" '
+                        'ADD CONSTRAINT fk_order_customer_id FOREIGN KEY ("customer_id") REFERENCES "customer" (id)'
+                    )
+                )
+        
+        # Ensure Customer table has proper structure if it exists
+        customer_table = "customer"
+        if inspect(connection).has_table(customer_table):
+            customer_columns = {column["name"] for column in inspect(connection).get_columns(customer_table)}
+            
+            # Ensure tenant_id column exists for Customer
+            if "tenant_id" not in customer_columns:
+                connection.execute(text(f'ALTER TABLE "{customer_table}" ADD COLUMN tenant_id INTEGER NOT NULL DEFAULT 1'))
+                connection.execute(text(f'UPDATE "{customer_table}" SET tenant_id = 1 WHERE tenant_id IS NULL'))
+                connection.execute(text(f'ALTER TABLE "{customer_table}" ALTER COLUMN tenant_id SET NOT NULL'))
+                
+                # Add foreign key for tenant_id
+                customer_fks = [fk["constrained_columns"] for fk in inspect(connection).get_foreign_keys(customer_table)]
+                has_tenant_fk = any("tenant_id" in fk for fk in customer_fks)
+                if not has_tenant_fk:
+                    connection.execute(
+                        text(
+                            f'ALTER TABLE "{customer_table}" '
+                            'ADD CONSTRAINT fk_customer_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenant (id)'
+                        )
+                    )
+                
+                # Add unique constraint for tenant_id + email
+                indexes = inspect(connection).get_indexes(customer_table)
+                has_unique_constraint = any(idx.get("unique") and set(idx.get("column_names", [])) == {"tenant_id", "email"} for idx in indexes)
+                if not has_unique_constraint:
+                    connection.execute(
+                        text(
+                            'CREATE UNIQUE INDEX IF NOT EXISTS "uq_customer_tenant_email" '
+                            f'ON "{customer_table}" (tenant_id, email)'
+                        )
+                    )
+        
+        # Ensure CustomerSession table has proper structure if it exists
+        customer_session_table = "customersession"
+        if inspect(connection).has_table(customer_session_table):
+            session_columns = {column["name"] for column in inspect(connection).get_columns(customer_session_table)}
+            
+            # Add foreign key for customer_id if it doesn't exist
+            session_fks = [fk["constrained_columns"] for fk in inspect(connection).get_foreign_keys(customer_session_table)]
+            has_customer_fk = any("customer_id" in fk for fk in session_fks)
+            if not has_customer_fk:
+                connection.execute(
+                    text(
+                        f'ALTER TABLE "{customer_session_table}" '
+                        'ADD CONSTRAINT fk_customersession_customer_id FOREIGN KEY ("customer_id") REFERENCES "customer" (id)'
+                    )
+                )

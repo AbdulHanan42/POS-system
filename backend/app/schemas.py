@@ -644,3 +644,118 @@ class DeliveryZoneUpdate(BaseModel):
 class DeliveryStatusUpdate(BaseModel):
     deliveryStatus: Literal["pending", "confirmed", "preparing", "ready", "out_for_delivery", "delivered", "cancelled"]
     actualDeliveryTime: datetime | None = None
+
+
+class CustomerRegister(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    phone: str = Field(default="", max_length=30)
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        value = value.strip().casefold()
+        if value.count("@") != 1 or "." not in value.rsplit("@", 1)[-1]:
+            raise ValueError("Enter a valid email address")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_phone(cls, value: str) -> str:
+        return value.strip()
+
+
+class CustomerLogin(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class CustomerUpdate(BaseModel):
+    name: str | None = Field(None, min_length=2, max_length=120)
+    phone: str | None = Field(None, max_length=30)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        if value is None:
+            return value
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Name is required")
+        return value
+
+
+class CustomerRead(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: str
+    status: str
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CustomerSessionRead(BaseModel):
+    accessToken: str
+    tokenType: Literal["bearer"] = "bearer"
+    expiresAt: datetime
+    customer: CustomerRead
+
+
+class CustomerAddressCreate(BaseModel):
+    label: str = Field(min_length=1, max_length=50)
+    address: str = Field(min_length=8, max_length=300)
+    zone: str = Field(min_length=1, max_length=80)
+    isDefault: bool = False
+
+    @field_validator("label", "address", "zone")
+    @classmethod
+    def normalize_fields(cls, value: str) -> str:
+        return value.strip()
+
+
+class CustomerAddressUpdate(BaseModel):
+    label: str | None = Field(None, min_length=1, max_length=50)
+    address: str | None = Field(None, min_length=8, max_length=300)
+    zone: str | None = Field(None, min_length=1, max_length=80)
+    isDefault: bool | None = None
+
+
+class CustomerAddressRead(CustomerAddressCreate):
+    id: int
+    customerId: int
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CustomerOrderRead(BaseModel):
+    id: int
+    createdAt: datetime
+    status: str
+    kitchenStatus: str
+    deliveryStatus: str
+    total: float
+    items: list[dict[str, Any]]
+    deliveryAddress: str | None
+    deliveryZone: str | None
+    deliveryFee: float
+    estimatedDeliveryTime: datetime | None
+    actualDeliveryTime: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
