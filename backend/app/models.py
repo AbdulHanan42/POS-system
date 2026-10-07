@@ -262,6 +262,7 @@ class Order(SQLModel, table=True):
     )
     customer: str = Field(max_length=120)
     customerPhone: str | None = Field(default=None, sa_column=Column("customer_phone", String(30), nullable=True))
+    customerId: int | None = Field(default=None, sa_column=Column("customer_id", Integer, ForeignKey("customer.id"), nullable=True, index=True))
     source: str = Field(default="pos", max_length=20, index=True)
     publicTrackingToken: str | None = Field(default=None, sa_column=Column("public_tracking_token", String(64), nullable=True))
     paymentMethod: str = Field(
@@ -338,4 +339,63 @@ class DeliveryZone(SQLModel, table=True):
     createdAt: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
+class Customer(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_customer_tenant_email"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
+    name: str = Field(max_length=120)
+    email: str = Field(max_length=254, index=True)
+    phone: str = Field(default="", max_length=30)
+    passwordHash: str = Field(
+        sa_column=Column("password_hash", String(200), nullable=False),
+    )
+    status: str = Field(default="active", max_length=20, index=True)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
+class CustomerAddress(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    customerId: int = Field(
+        sa_column=Column("customer_id", Integer, ForeignKey("customer.id"), nullable=False, index=True)
+    )
+    label: str = Field(max_length=50, default="Home")
+    address: str = Field(max_length=300)
+    zone: str = Field(max_length=80)
+    isDefault: bool = Field(
+        default=False,
+        sa_column=Column("is_default", Boolean, nullable=False, default=False),
+    )
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
+class CustomerSession(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    customerId: int = Field(
+        sa_column=Column("customer_id", Integer, ForeignKey("customer.id"), nullable=False, index=True)
+    )
+    tokenHash: str = Field(
+        sa_column=Column("token_hash", String(64), nullable=False, unique=True, index=True),
+    )
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+    expiresAt: datetime = Field(
+        sa_column=Column("expires_at", DateTime(timezone=True), nullable=False, index=True),
+    )
+    revokedAt: datetime | None = Field(
+        default=None,
+        sa_column=Column("revoked_at", DateTime(timezone=True), nullable=True),
     )

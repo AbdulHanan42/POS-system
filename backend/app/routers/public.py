@@ -4,9 +4,10 @@ import secrets
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from sqlmodel import Session, select
 
+from app.auth import get_optional_current_customer
 from app.database import get_session
 from app.event_hub import order_events
-from app.models import DeliveryZone, Order, Product, RestaurantSettings, Tenant
+from app.models import Customer, DeliveryZone, Order, Product, RestaurantSettings, Tenant
 from app.schemas import (
     DeliveryZoneRead,
     ProductRead,
@@ -84,6 +85,7 @@ def create_public_order(
     order_data: PublicDeliveryOrderCreate,
     background_tasks: BackgroundTasks,
     session: Session = Depends(public_session),
+    customer: Customer | None = Depends(get_optional_current_customer),
 ) -> PublicOrderConfirmation:
     zone = session.exec(
         select(DeliveryZone).where(
@@ -138,6 +140,7 @@ def create_public_order(
         table="",
         customer=f"{order_data.customer} · {order_data.phone}",
         customerPhone=order_data.phone,
+        customerId=customer.id if customer else None,
         source="website",
         publicTrackingToken=secrets.token_urlsafe(32),
         paymentMethod="Cash",
