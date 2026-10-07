@@ -22,6 +22,7 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 def tenant_models():
     from app.models import (
         Category,
+        DeliveryZone,
         InventoryMovement,
         InventoryStock,
         ModifierGroup,
@@ -35,6 +36,7 @@ def tenant_models():
 
     return (
         Category,
+        DeliveryZone,
         Product,
         RestaurantTable,
         StaffMember,
@@ -159,6 +161,24 @@ def create_db_and_tables() -> None:
             )
         )
 
+        settings_columns = {
+            column["name"]
+            for column in inspect(connection).get_columns(RestaurantSettings.__tablename__)
+        }
+        for column_name, column_type in {
+            "public_description": "VARCHAR(500) NOT NULL DEFAULT ''",
+            "logo_url": "VARCHAR(500) NOT NULL DEFAULT ''",
+            "hero_image_url": "VARCHAR(500) NOT NULL DEFAULT ''",
+            "opening_hours": "VARCHAR(500) NOT NULL DEFAULT ''",
+            "website_enabled": "BOOLEAN NOT NULL DEFAULT TRUE",
+            "ordering_open": "BOOLEAN NOT NULL DEFAULT TRUE",
+        }.items():
+            if column_name not in settings_columns:
+                connection.execute(text(
+                    f'ALTER TABLE "{RestaurantSettings.__tablename__}" '
+                    f'ADD COLUMN "{column_name}" {column_type}'
+                ))
+
         columns = {
             column["name"]
             for column in inspect(connection).get_columns(Order.__tablename__)
@@ -184,3 +204,13 @@ def create_db_and_tables() -> None:
                     "ADD COLUMN tax_rate NUMERIC(5, 4) NOT NULL DEFAULT 0.1000"
                 )
             )
+        for column_name, column_type in {
+            "customer_phone": "VARCHAR(30)",
+            "source": "VARCHAR(20) NOT NULL DEFAULT 'pos'",
+            "public_tracking_token": "VARCHAR(64)",
+        }.items():
+            if column_name not in columns:
+                connection.execute(text(
+                    f'ALTER TABLE "{Order.__tablename__}" '
+                    f'ADD COLUMN "{column_name}" {column_type}'
+                ))

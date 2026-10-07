@@ -46,6 +46,10 @@ async function signOut() {
         <span class="nav-icon" aria-hidden="true">TB</span>
         <span>Tables</span>
       </RouterLink>
+      <RouterLink v-if="auth.can('orders:read')" class="nav-item" to="/delivery">
+        <span class="nav-icon" aria-hidden="true">DL</span>
+        <span>Delivery</span>
+      </RouterLink>
       <div v-if="auth.can('catalog:manage')" class="menu-group">
         <p class="nav-label nav-label--inline">Menu</p>
         <RouterLink class="nav-subitem" to="/menu/products">Products</RouterLink>

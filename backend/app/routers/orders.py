@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.database import get_session
 from app.auth import get_current_user, require_permission, require_roles
 from app.inventory import apply_inventory_movement, get_or_create_stock
+from app.event_hub import order_events
 from app.models import Order, Product
 from app.schemas import (
     KitchenOrderCreate,
@@ -126,6 +127,11 @@ def create_kitchen_order(
     total = (
         (subtotal - order_data.discount) * (Decimal("1.00") + order_data.taxRate)
     ).quantize(Decimal("0.01"))
+    
+    # Add delivery fee to total if applicable
+    if order_data.deliveryFee:
+        total = (total + order_data.deliveryFee).quantize(Decimal("0.01"))
+    
     order = Order(
         createdAt=order_data.createdAt or datetime.now(timezone.utc),
         status="awaiting_payment",
@@ -138,6 +144,10 @@ def create_kitchen_order(
         taxRate=order_data.taxRate,
         total=total,
         items=item_values,
+        deliveryAddress=order_data.deliveryAddress,
+        deliveryZone=order_data.deliveryZone,
+        deliveryFee=order_data.deliveryFee,
+        deliveryNotes=order_data.deliveryNotes,
     )
     session.add(order)
     session.commit()
@@ -149,6 +159,7 @@ def create_kitchen_order(
 def update_order_status(
     order_id: int,
     status_data: OrderStatusUpdate,
+    background_tasks: BackgroundTasks,
     user=Depends(require_roles("Administrator", "Manager")),
     session: Session = Depends(get_session),
 ) -> Order:
@@ -179,6 +190,7 @@ def update_order_status(
     session.add(order)
     session.commit()
     session.refresh(order)
+    background_tasks.add_task(order_events.order_updated, order.tenantId, order.id, order.status, order.kitchenStatus, order.deliveryStatus)
     return order
 
 
@@ -186,6 +198,7 @@ def update_order_status(
 def complete_kitchen_order_payment(
     order_id: int,
     payment_data: OrderPaymentCreate,
+    background_tasks: BackgroundTasks,
     user=Depends(require_permission("orders:payment")),
     session: Session = Depends(get_session),
 ) -> Order:
@@ -233,6 +246,7 @@ def complete_kitchen_order_payment(
     session.add(order)
     session.commit()
     session.refresh(order)
+    background_tasks.add_task(order_events.order_updated, order.tenantId, order.id, order.status, order.kitchenStatus, order.deliveryStatus)
     return order
 
 
@@ -240,6 +254,7 @@ def complete_kitchen_order_payment(
 def update_kitchen_status(
     order_id: int,
     status_data: KitchenStatusUpdate,
+    background_tasks: BackgroundTasks,
     user=Depends(require_permission("kitchen:update")),
     session: Session = Depends(get_session),
 ) -> Order:
@@ -263,4 +278,5 @@ def update_kitchen_status(
     session.add(order)
     session.commit()
     session.refresh(order)
+    background_tasks.add_task(order_events.order_updated, order.tenantId, order.id, order.status, order.kitchenStatus, order.deliveryStatus)
     return order

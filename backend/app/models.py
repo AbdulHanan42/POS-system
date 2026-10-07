@@ -147,6 +147,12 @@ class RestaurantSettings(SQLModel, table=True):
     email: str = Field(default="", max_length=254)
     phone: str = Field(default="", max_length=30)
     address: str = Field(default="", max_length=240)
+    publicDescription: str = Field(default="", sa_column=Column("public_description", String(500), nullable=False, default=""))
+    logoUrl: str = Field(default="", sa_column=Column("logo_url", String(500), nullable=False, default=""))
+    heroImageUrl: str = Field(default="", sa_column=Column("hero_image_url", String(500), nullable=False, default=""))
+    openingHours: str = Field(default="", sa_column=Column("opening_hours", String(500), nullable=False, default=""))
+    websiteEnabled: bool = Field(default=True, sa_column=Column("website_enabled", Boolean, nullable=False, default=True))
+    orderingOpen: bool = Field(default=True, sa_column=Column("ordering_open", Boolean, nullable=False, default=True))
     taxRate: Decimal = Field(
         default=Decimal("0.1000"),
         sa_column=Column(Numeric(5, 4), nullable=False, default=Decimal("0.1000")),
@@ -255,6 +261,9 @@ class Order(SQLModel, table=True):
         sa_column=Column("table_name", String(80), nullable=False, default=""),
     )
     customer: str = Field(max_length=120)
+    customerPhone: str | None = Field(default=None, sa_column=Column("customer_phone", String(30), nullable=True))
+    source: str = Field(default="pos", max_length=20, index=True)
+    publicTrackingToken: str | None = Field(default=None, sa_column=Column("public_tracking_token", String(64), nullable=True))
     paymentMethod: str = Field(
         sa_column=Column("payment_method", String(40), nullable=False),
     )
@@ -276,4 +285,57 @@ class Order(SQLModel, table=True):
     )
     items: list[dict[str, Any]] = Field(
         sa_column=Column(JSON, nullable=False),
+    )
+    deliveryAddress: str | None = Field(
+        default=None,
+        sa_column=Column("delivery_address", String(300), nullable=True),
+    )
+    deliveryZone: str | None = Field(
+        default=None,
+        sa_column=Column("delivery_zone", String(80), nullable=True),
+    )
+    deliveryFee: Decimal = Field(
+        default=Decimal("0.00"),
+        sa_column=Column("delivery_fee", Numeric(10, 2), nullable=False, default=Decimal("0.00")),
+    )
+    deliveryStatus: str = Field(
+        default="pending",
+        sa_column=Column("delivery_status", String(20), nullable=False, default="pending"),
+    )
+    deliveryNotes: str | None = Field(
+        default=None,
+        sa_column=Column("delivery_notes", String(500), nullable=True),
+    )
+    estimatedDeliveryTime: datetime | None = Field(
+        default=None,
+        sa_column=Column("estimated_delivery_time", DateTime(timezone=True), nullable=True),
+    )
+    actualDeliveryTime: datetime | None = Field(
+        default=None,
+        sa_column=Column("actual_delivery_time", DateTime(timezone=True), nullable=True),
+    )
+
+
+class DeliveryZone(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_deliveryzone_tenant_name"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
+    name: str = Field(max_length=80, index=True)
+    description: str = Field(default="", max_length=240)
+    fee: Decimal = Field(
+        default=Decimal("0.00"),
+        sa_column=Column(Numeric(10, 2), nullable=False),
+    )
+    minOrderAmount: Decimal = Field(
+        default=Decimal("0.00"),
+        sa_column=Column("min_order_amount", Numeric(10, 2), nullable=False),
+    )
+    estimatedTime: int = Field(default=30, description="Estimated delivery time in minutes")
+    status: str = Field(default="active", max_length=20, index=True)
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
     )

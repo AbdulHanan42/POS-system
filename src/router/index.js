@@ -54,6 +54,7 @@ const router = createRouter({
     { path: '/forgot-password', meta: { public: true, layout: 'auth' }, name: 'forgot-password', component: () => import('../views/auth/ForgotPassword.vue') },
     { path: '/verify-otp', meta: { public: true, layout: 'auth' }, name: 'verify-otp', component: () => import('../views/auth/VerifyOTP.vue') },
     { path: '/reset-password', meta: { public: true, layout: 'auth' }, name: 'reset-password', component: () => import('../views/auth/ResetPassword.vue') },
+    { path: '/delivery', meta: { permission: 'orders:read' }, component: () => import('../views/delivery/DeliveryDashboard.vue') },
     { path: '/settings', meta: { permission: routePermissions.settings }, component: () => import('../views/settings/GeneralSettings.vue') },
   ],
 })
