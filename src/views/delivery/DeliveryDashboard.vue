@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useDeliveryStore } from '../../stores/delivery.js'
 import { useAuthStore } from '../../stores/auth.js'
 
@@ -17,13 +17,20 @@ const zoneForm = ref({
 })
 const editingZone = ref(null)
 const loading = ref(false)
+const deliveryError = ref('')
+let deliveryRefreshTimer
 
 const deliveryOrders = computed(() => deliveryStore.deliveryOrders)
 const zones = computed(() => deliveryStore.zones)
 
 onMounted(() => {
   loadDeliveryData()
+  deliveryRefreshTimer = window.setInterval(() => {
+    deliveryStore.loadDeliveryOrders().catch((error) => { deliveryError.value = error.message })
+  }, 15000)
 })
+
+onUnmounted(() => window.clearInterval(deliveryRefreshTimer))
 
 async function loadDeliveryData() {
   try {
@@ -38,12 +45,14 @@ async function loadDeliveryData() {
 
 async function updateDeliveryStatus(orderId, status) {
   loading.value = true
+  deliveryError.value = ''
   try {
     await deliveryStore.updateDeliveryStatus(orderId, {
       deliveryStatus: status,
       actualDeliveryTime: status === 'delivered' ? new Date().toISOString() : null,
     })
   } catch (error) {
+    deliveryError.value = error.message
     console.error('Failed to update delivery status:', error)
   } finally {
     loading.value = false
@@ -148,6 +157,7 @@ const statusLabels = {
 
       <!-- Orders Tab -->
       <div v-if="activeTab === 'orders'" class="mt-6">
+        <p v-if="deliveryError" role="alert" class="mb-4 rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger">{{ deliveryError }}</p>
         <div v-if="deliveryOrders.length === 0" class="py-12 text-center text-sm text-muted">
           No active delivery orders.
         </div>
@@ -168,6 +178,8 @@ const statusLabels = {
                 <p class="mt-1 text-sm text-muted">
                   {{ order.customer }} · {{ order.type }}
                 </p>
+                <p v-if="order.customerPhone" class="mt-1 text-sm text-muted">{{ order.customerPhone }}</p>
+                <p v-if="order.source === 'website'" class="mt-1 text-xs font-semibold text-brand">Online website order</p>
                 <p class="mt-1 text-sm text-ink">
                   <span class="font-semibold">Address:</span> {{ order.deliveryAddress || 'N/A' }}
                 </p>
@@ -192,7 +204,7 @@ const statusLabels = {
                   <option value="pending">Pending</option>
                   <option value="preparing">Preparing</option>
                   <option value="out_for_delivery">Out for Delivery</option>
-                  <option value="delivered">Delivered</option>
+                  <option value="delivered" :disabled="order.source === 'website' && order.status === 'awaiting_payment' && order.kitchenStatus !== 'ready'">Delivered</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
               </div>

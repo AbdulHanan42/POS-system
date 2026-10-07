@@ -147,6 +147,12 @@ class RestaurantSettings(SQLModel, table=True):
     email: str = Field(default="", max_length=254)
     phone: str = Field(default="", max_length=30)
     address: str = Field(default="", max_length=240)
+    publicDescription: str = Field(default="", sa_column=Column("public_description", String(500), nullable=False, default=""))
+    logoUrl: str = Field(default="", sa_column=Column("logo_url", String(500), nullable=False, default=""))
+    heroImageUrl: str = Field(default="", sa_column=Column("hero_image_url", String(500), nullable=False, default=""))
+    openingHours: str = Field(default="", sa_column=Column("opening_hours", String(500), nullable=False, default=""))
+    websiteEnabled: bool = Field(default=True, sa_column=Column("website_enabled", Boolean, nullable=False, default=True))
+    orderingOpen: bool = Field(default=True, sa_column=Column("ordering_open", Boolean, nullable=False, default=True))
     taxRate: Decimal = Field(
         default=Decimal("0.1000"),
         sa_column=Column(Numeric(5, 4), nullable=False, default=Decimal("0.1000")),
@@ -255,6 +261,9 @@ class Order(SQLModel, table=True):
         sa_column=Column("table_name", String(80), nullable=False, default=""),
     )
     customer: str = Field(max_length=120)
+    customerPhone: str | None = Field(default=None, sa_column=Column("customer_phone", String(30), nullable=True))
+    source: str = Field(default="pos", max_length=20, index=True)
+    publicTrackingToken: str | None = Field(default=None, sa_column=Column("public_tracking_token", String(64), nullable=True))
     paymentMethod: str = Field(
         sa_column=Column("payment_method", String(40), nullable=False),
     )

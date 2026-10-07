@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+:root {
+  font-family: "DM Sans", "Avenir Next", Avenir, sans-serif;
+  color: #252920;
+  background: #f7f6f1;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --forest: #284b3d;
+  --clay: #d66b4a;
+  --paper: #f7f6f1;
+  --ink: #252920;
+  --muted: #777a70;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 320px; margin: 0; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .48; }
+a { color: inherit; text-decoration: none; }
+::selection { color: white; background: var(--forest); }
