@@ -1,25 +1,29 @@
 import { defineStore } from 'pinia'
 
-const keyFor = (tenant) => `restaurant-cart:${tenant}`
+const keyFor = (tenant, customerId) =>
+  `restaurant-cart:${tenant}:${customerId ? `customer:${customerId}` : 'guest'}`
 
 export const useCartStore = defineStore('customer-cart', {
-  state: () => ({ tenant: '', items: [] }),
+  state: () => ({ tenant: '', customerId: null, items: [] }),
   getters: {
     count: (state) => state.items.reduce((sum, item) => sum + item.quantity, 0),
     subtotal: (state) => state.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
   },
   actions: {
-    initialize(tenant) {
-      if (this.tenant === tenant) return
+    initialize(tenant, customerId = null) {
+      if (this.tenant === tenant && this.customerId === customerId) return
       this.tenant = tenant
+      this.customerId = customerId
       try {
-        this.items = JSON.parse(localStorage.getItem(keyFor(tenant)) || '[]')
+        this.items = JSON.parse(localStorage.getItem(keyFor(tenant, customerId)) || '[]')
       } catch {
         this.items = []
       }
     },
     persist() {
-      if (this.tenant) localStorage.setItem(keyFor(this.tenant), JSON.stringify(this.items))
+      if (this.tenant) {
+        localStorage.setItem(keyFor(this.tenant, this.customerId), JSON.stringify(this.items))
+      }
     },
     add(product, size, price) {
       const existing = this.items.find((item) => item.productId === product.id && item.size === size)

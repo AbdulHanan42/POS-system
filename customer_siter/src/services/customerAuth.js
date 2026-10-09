@@ -3,8 +3,8 @@ const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 const TOKEN_KEY = 'restaurant_customer.accessToken'
 const CUSTOMER_KEY = 'restaurant_customer.data'
 
-function readResponse(response) {
-  const body = response.json().catch(() => ({}))
+async function readResponse(response) {
+  const body = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(body.detail || 'The request could not be completed.')
   return body
 }

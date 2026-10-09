@@ -61,12 +61,12 @@ async function loadSavedAddresses() {
     try {
       savedAddresses.value = await customerAuth.getAddresses();
       // Set default address if available
-      const defaultAddr = savedAddresses.value.find(addr => addr.isDefault);
+      const defaultAddr = savedAddresses.value.find((addr) => addr.isDefault);
       if (defaultAddr) {
         selectAddress(defaultAddr);
       }
     } catch (err) {
-      console.error('Failed to load addresses:', err);
+      console.error("Failed to load addresses:", err);
     }
   }
 }
@@ -121,7 +121,7 @@ function priceFor(product) {
 async function loadStorefront() {
   loading.value = true;
   error.value = "";
-  cart.initialize(tenantSlug());
+  cart.initialize(tenantSlug(), auth.customer?.id ?? null);
   try {
     const [siteData, menuData, zoneData] = await Promise.all([
       publicApi.getSite(),
@@ -530,23 +530,31 @@ onMounted(() => {
               Pay cash when your order arrives.
             </p>
             <form class="mt-6 grid gap-4" @submit.prevent="placeOrder">
-              <label class="grid gap-1.5 text-xs font-semibold"
-                >Full name<input
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Full name
+                <input
                   v-model.trim="customer.name"
                   required
                   autocomplete="name"
-                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal" /></label
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Phone number<input
+                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal"
+                />
+              </label>
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Phone number
+                <input
                   v-model.trim="customer.phone"
                   required
                   type="tel"
                   autocomplete="tel"
-                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal" /></label
+                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal"
+                />
+              </label>
 
               <!-- Saved Addresses -->
               <div v-if="savedAddresses.length > 0" class="space-y-2">
-                <span class="text-xs font-semibold text-[var(--ink)]">Saved addresses</span>
+                <span class="text-xs font-semibold text-[var(--ink)]"
+                  >Saved addresses</span
+                >
                 <div class="space-y-2">
                   <button
                     v-for="addr in savedAddresses"
@@ -554,19 +562,30 @@ onMounted(() => {
                     type="button"
                     @click="selectAddress(addr)"
                     class="w-full flex items-center justify-between rounded border p-3 text-left"
-                    :class="selectedAddress?.id === addr.id ? 'border-[var(--forest)] bg-[var(--forest)]/5' : 'border-stone-300'"
+                    :class="
+                      selectedAddress?.id === addr.id
+                        ? 'border-[var(--forest)] bg-[var(--forest)]/5'
+                        : 'border-stone-300'
+                    "
                   >
                     <div>
                       <span class="block text-sm font-medium">{{ addr.label }}</span>
-                      <span class="block text-xs text-[var(--muted)]">{{ addr.address }}</span>
+                      <span class="block text-xs text-[var(--muted)]">{{
+                        addr.address
+                      }}</span>
                     </div>
-                    <Check v-if="selectedAddress?.id === addr.id" :size="18" class="text-[var(--forest)]" />
+                    <Check
+                      v-if="selectedAddress?.id === addr.id"
+                      :size="18"
+                      class="text-[var(--forest)]"
+                    />
                   </button>
                 </div>
               </div>
 
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Delivery area<select
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Delivery area
+                <select
                   v-model="customer.zone"
                   required
                   class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal"
@@ -575,24 +594,27 @@ onMounted(() => {
                   <option v-for="zone in zones" :key="zone.id" :value="zone.name">
                     {{ zone.name }} · {{ money(zone.fee) }}
                   </option>
-                </select></label
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Delivery address<textarea
+                </select>
+              </label>
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Delivery address
+                <textarea
                   v-model.trim="customer.address"
                   required
                   minlength="8"
                   autocomplete="street-address"
                   rows="2"
                   class="resize-y border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
-                /></label
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Delivery instructions
-                <span class="font-normal text-[var(--muted)]">Optional</span
-                ><textarea
+                ></textarea>
+              </label>
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Delivery instructions
+                <span class="font-normal text-[var(--muted)]">Optional</span>
+                <textarea
                   v-model.trim="customer.notes"
                   rows="2"
                   class="resize-y border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
-                />
+                ></textarea>
               </label>
               <p v-if="error" class="text-sm text-red-800" role="alert">{{ error }}</p>
               <div class="mt-1 grid gap-2 border-t border-stone-300 pt-4 text-sm">
