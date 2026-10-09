@@ -611,8 +611,9 @@ class SalesReportRead(BaseModel):
     summary: SalesReportSummary
     salesByDay: list[SalesReportDay]
     topProducts: list[SalesReportProduct]
-    breakdown: list[SalesReportBreakdown]
-    transactions: list[SalesReportTransaction]
+    paymentMethods: list[SalesReportBreakdown]
+    orderTypes: list[SalesReportBreakdown]
+    recentOrders: list[SalesReportTransaction]
 
 
 class DeliveryZoneCreate(BaseModel):
