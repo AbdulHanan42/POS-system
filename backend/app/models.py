@@ -364,6 +364,9 @@ class Customer(SQLModel, table=True):
 
 class CustomerAddress(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenantId: int = Field(
+        sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
+    )
     customerId: int = Field(
         sa_column=Column("customer_id", Integer, ForeignKey("customer.id"), nullable=False, index=True)
     )

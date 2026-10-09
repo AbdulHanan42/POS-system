@@ -1,4 +1,5 @@
 const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
+import { customerAuth } from './customerAuth'
 
 export function tenantSlug() {
   return new URLSearchParams(window.location.search).get('tenant')
@@ -29,9 +30,13 @@ export const publicApi = {
     return readResponse(await fetch(publicUrl('delivery-zones')))
   },
   async createOrder(order) {
+    const token = customerAuth.getToken()
     return readResponse(await fetch(publicUrl('orders'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(order),
     }))
   },
