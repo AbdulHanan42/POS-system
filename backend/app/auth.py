@@ -141,3 +141,64 @@ def get_current_user(
         raise unauthorized
     session.info["tenant_id"] = user.tenantId
     return user
+
+
+def get_current_customer(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    session: Session = Depends(get_session),
+):
+    from app.models import Customer, CustomerSession
+
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise unauthorized
+
+    token_hash = hashlib.sha256(credentials.credentials.encode()).hexdigest()
+    customer_session = session.exec(
+        select(CustomerSession).where(
+            CustomerSession.tokenHash == token_hash,
+            CustomerSession.revokedAt.is_(None),
+            CustomerSession.expiresAt > datetime.now(timezone.utc),
+        )
+    ).first()
+    if customer_session is None:
+        raise unauthorized
+
+    customer = session.get(Customer, customer_session.customerId)
+    if customer is None or customer.status != "active":
+        raise unauthorized
+    session.info["tenant_id"] = customer.tenantId
+    return customer
+
+
+def get_optional_current_customer(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    session: Session = Depends(get_session),
+):
+    if credentials is None:
+        return None
+    return get_current_customer(credentials=credentials, session=session)
+
+
+def create_customer_session(session: Session, customer) -> tuple[str, datetime]:
+    token = secrets.token_urlsafe(48)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=SESSION_HOURS)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    from app.models import CustomerSession
+    session.add(CustomerSession(customerId=customer.id, tokenHash=token_hash, expiresAt=expires_at))
+    return token, expires_at
+
+
+def customer_response(customer) -> dict:
+    return {
+        "id": customer.id,
+        "name": customer.name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "status": customer.status,
+        "createdAt": customer.createdAt,
+    }

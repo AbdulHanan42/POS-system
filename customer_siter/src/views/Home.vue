@@ -9,15 +9,19 @@ import {
   Plus,
   Search,
   ShoppingBag,
+  User,
   X,
 } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
 import { publicApi, tenantSlug } from "../services/publicApi";
 import { useCartStore } from "../stores/cart";
+import { useAuthStore } from "../stores/auth";
+import { customerAuth } from "../services/customerAuth";
 
 const route = useRoute();
 const router = useRouter();
 const cart = useCartStore();
+const auth = useAuthStore();
 const site = ref({
   restaurantName: "Restaurant",
   phone: "",
@@ -40,7 +44,38 @@ const checkoutOpen = ref(false);
 const loading = ref(true);
 const submitting = ref(false);
 const error = ref("");
+const savedAddresses = ref([]);
+const selectedAddress = ref(null);
 const customer = ref({ name: "", phone: "", address: "", zone: "", notes: "" });
+
+// Pre-fill customer data if logged in
+function updateCustomerFromAuth() {
+  if (auth.customer) {
+    customer.value.name = auth.customer.name;
+    customer.value.phone = auth.customer.phone;
+  }
+}
+
+async function loadSavedAddresses() {
+  if (auth.customer) {
+    try {
+      savedAddresses.value = await customerAuth.getAddresses();
+      // Set default address if available
+      const defaultAddr = savedAddresses.value.find((addr) => addr.isDefault);
+      if (defaultAddr) {
+        selectAddress(defaultAddr);
+      }
+    } catch (err) {
+      console.error("Failed to load addresses:", err);
+    }
+  }
+}
+
+function selectAddress(addr) {
+  selectedAddress.value = addr;
+  customer.value.address = addr.address;
+  customer.value.zone = addr.zone;
+}
 
 const categories = computed(() => [
   "All",
@@ -86,7 +121,7 @@ function priceFor(product) {
 async function loadStorefront() {
   loading.value = true;
   error.value = "";
-  cart.initialize(tenantSlug());
+  cart.initialize(tenantSlug(), auth.customer?.id ?? null);
   try {
     const [siteData, menuData, zoneData] = await Promise.all([
       publicApi.getSite(),
@@ -162,7 +197,12 @@ async function placeOrder() {
   }
 }
 
-onMounted(loadStorefront);
+onMounted(() => {
+  auth.initialize();
+  updateCustomerFromAuth();
+  loadStorefront();
+  loadSavedAddresses();
+});
 </script>
 
 <template>
@@ -193,17 +233,33 @@ onMounted(loadStorefront);
         <a href="#menu">Menu</a><a href="#story">Our kitchen</a
         ><a href="#visit">Visit us</a>
       </nav>
-      <button
-        class="inline-flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold hover:border-[var(--forest)]"
-        type="button"
-        @click="cartOpen = true"
-      >
-        <ShoppingBag :size="17" /> Your order
-        <span
-          class="grid size-6 place-items-center rounded-full bg-[var(--forest)] text-xs text-white"
-          >{{ cart.count }}</span
+      <div class="flex items-center gap-3">
+        <button
+          v-if="!auth.customer"
+          @click="router.push('/login')"
+          class="inline-flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold hover:border-[var(--forest)]"
         >
-      </button>
+          <User :size="17" /> Sign in
+        </button>
+        <button
+          v-else
+          @click="router.push('/profile')"
+          class="inline-flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold hover:border-[var(--forest)]"
+        >
+          <User :size="17" /> {{ auth.customer.name }}
+        </button>
+        <button
+          class="inline-flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold hover:border-[var(--forest)]"
+          type="button"
+          @click="cartOpen = true"
+        >
+          <ShoppingBag :size="17" /> Your order
+          <span
+            class="grid size-6 place-items-center rounded-full bg-[var(--forest)] text-xs text-white"
+            >{{ cart.count }}</span
+          >
+        </button>
+      </div>
     </header>
 
     <p
@@ -474,21 +530,62 @@ onMounted(loadStorefront);
               Pay cash when your order arrives.
             </p>
             <form class="mt-6 grid gap-4" @submit.prevent="placeOrder">
-              <label class="grid gap-1.5 text-xs font-semibold"
-                >Full name<input
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Full name
+                <input
                   v-model.trim="customer.name"
                   required
                   autocomplete="name"
-                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal" /></label
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Phone number<input
+                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal"
+                />
+              </label>
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Phone number
+                <input
                   v-model.trim="customer.phone"
                   required
                   type="tel"
                   autocomplete="tel"
-                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal" /></label
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Delivery area<select
+                  class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal"
+                />
+              </label>
+
+              <!-- Saved Addresses -->
+              <div v-if="savedAddresses.length > 0" class="space-y-2">
+                <span class="text-xs font-semibold text-[var(--ink)]"
+                  >Saved addresses</span
+                >
+                <div class="space-y-2">
+                  <button
+                    v-for="addr in savedAddresses"
+                    :key="addr.id"
+                    type="button"
+                    @click="selectAddress(addr)"
+                    class="w-full flex items-center justify-between rounded border p-3 text-left"
+                    :class="
+                      selectedAddress?.id === addr.id
+                        ? 'border-[var(--forest)] bg-[var(--forest)]/5'
+                        : 'border-stone-300'
+                    "
+                  >
+                    <div>
+                      <span class="block text-sm font-medium">{{ addr.label }}</span>
+                      <span class="block text-xs text-[var(--muted)]">{{
+                        addr.address
+                      }}</span>
+                    </div>
+                    <Check
+                      v-if="selectedAddress?.id === addr.id"
+                      :size="18"
+                      class="text-[var(--forest)]"
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Delivery area
+                <select
                   v-model="customer.zone"
                   required
                   class="h-11 border border-stone-300 bg-white px-3 text-sm font-normal"
@@ -497,24 +594,27 @@ onMounted(loadStorefront);
                   <option v-for="zone in zones" :key="zone.id" :value="zone.name">
                     {{ zone.name }} · {{ money(zone.fee) }}
                   </option>
-                </select></label
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Delivery address<textarea
+                </select>
+              </label>
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Delivery address
+                <textarea
                   v-model.trim="customer.address"
                   required
                   minlength="8"
                   autocomplete="street-address"
                   rows="2"
                   class="resize-y border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
-                /></label
-              ><label class="grid gap-1.5 text-xs font-semibold"
-                >Delivery instructions
-                <span class="font-normal text-[var(--muted)]">Optional</span
-                ><textarea
+                ></textarea>
+              </label>
+              <label class="grid gap-1.5 text-xs font-semibold">
+                Delivery instructions
+                <span class="font-normal text-[var(--muted)]">Optional</span>
+                <textarea
                   v-model.trim="customer.notes"
                   rows="2"
                   class="resize-y border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
-                />
+                ></textarea>
               </label>
               <p v-if="error" class="text-sm text-red-800" role="alert">{{ error }}</p>
               <div class="mt-1 grid gap-2 border-t border-stone-300 pt-4 text-sm">

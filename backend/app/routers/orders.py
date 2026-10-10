@@ -275,6 +275,8 @@ def update_kitchen_status(
         )
 
     order.kitchenStatus = status_data.kitchenStatus
+    if order.type == "Delivery" and status_data.kitchenStatus == "preparing":
+        order.deliveryStatus = "preparing"
     session.add(order)
     session.commit()
     session.refresh(order)

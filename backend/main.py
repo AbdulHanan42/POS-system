@@ -21,6 +21,7 @@ from app.routers.tables import router as tables_router
 from app.routers.delivery import router as delivery_router
 from app.routers.public import router as public_router
 from app.routers.websockets import router as websocket_router
+from app.routers.customers import router as customers_router
 from app.seed import seed_categories, seed_inventory, seed_products, seed_tables
 
 
@@ -66,6 +67,7 @@ app.include_router(settings_router, prefix="/api")
 app.include_router(delivery_router, prefix="/api")
 app.include_router(public_router, prefix="/api")
 app.include_router(websocket_router, prefix="/api")
+app.include_router(customers_router, prefix="/api")
 
 
 @app.get("/")

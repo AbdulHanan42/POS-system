@@ -8,7 +8,24 @@ From the repository root, copy `backend/.env.example` to `backend/.env` and set 
 
 ```env
 DATABASE_URL=postgresql+psycopg://postgres:your_password@localhost:5432/pos_system
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=mailer@example.com
+SMTP_PASSWORD=your_smtp_password
+SMTP_FROM_EMAIL=orders@example.com
+SMTP_USE_SSL=false
+CUSTOMER_SITE_URL=http://localhost:5174
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=orders@example.com
 ```
+
+Set your SMTP server credentials and sender in `backend/.env`. Port 587 uses
+STARTTLS; port 465 uses implicit TLS by default. SMTP is tried first. If SMTP is
+unavailable, Resend is used when its API key and verified sender are configured.
+Customer registration sends a six-digit code that expires after 10 minutes; codes
+can be resent once per minute and verification is limited to five attempts. The
+account and sign-in session are created only after the code is verified, then a
+confirmation email is sent.
 
 Create the `pos_system` database in PostgreSQL if it does not exist, then install and run the backend from `backend/`:
 
