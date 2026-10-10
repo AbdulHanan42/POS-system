@@ -121,12 +121,16 @@ class RestaurantTable(SQLModel, table=True):
 
 
 class StaffMember(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_staffmember_tenant_email"),
+    )
+
     id: int | None = Field(default=None, primary_key=True)
     tenantId: int = Field(
         sa_column=Column("tenant_id", Integer, ForeignKey("tenant.id"), nullable=False, default=1, index=True)
     )
     name: str = Field(max_length=120, index=True)
-    email: str = Field(max_length=254, unique=True, index=True)
+    email: str = Field(max_length=254, index=True)
     phone: str = Field(default="", max_length=30)
     role: str = Field(max_length=40, index=True)
     status: str = Field(default="active", max_length=20, index=True)

@@ -161,6 +161,17 @@ def create_db_and_tables() -> None:
                 )
             )
 
+        staff_indexes = inspect(connection).get_indexes("staffmember")
+        for index in staff_indexes:
+            if index["unique"] and index["column_names"] == ["email"]:
+                connection.execute(text(f'DROP INDEX IF EXISTS "{index["name"]}"'))
+        connection.execute(
+            text(
+                'CREATE UNIQUE INDEX IF NOT EXISTS "uq_staffmember_tenant_email" '
+                'ON "staffmember" (tenant_id, email)'
+            )
+        )
+
         for model in (Category, ModifierGroup):
             table_name = model.__tablename__
             indexes = inspect(connection).get_indexes(table_name)
