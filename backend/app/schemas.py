@@ -675,6 +675,24 @@ class CustomerRegister(BaseModel):
         return value.strip()
 
 
+class CustomerRegistrationEmail(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().casefold()
+
+
+class CustomerRegistrationVerify(CustomerRegistrationEmail):
+    otp: str = Field(pattern=r"^\d{6}$")
+
+
+class CustomerRegistrationStarted(BaseModel):
+    email: str
+    message: str
+
+
 class CustomerLogin(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=1, max_length=128)

@@ -92,6 +92,7 @@ def create_db_and_tables() -> None:
         Category,
         Customer,
         CustomerAddress,
+        CustomerRegistration,
         CustomerSession,
         InventoryMovement,
         InventoryStock,
@@ -107,6 +108,21 @@ def create_db_and_tables() -> None:
     )
 
     SQLModel.metadata.create_all(engine)
+    if engine.dialect.name == "postgresql":
+        registration_columns = {
+            column["name"]: column
+            for column in inspect(engine).get_columns("customerregistration")
+        }
+        otp_hash_column = registration_columns.get("otp_hash")
+        if otp_hash_column and getattr(otp_hash_column["type"], "length", 0) < 200:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        'ALTER TABLE "customerregistration" '
+                        'ALTER COLUMN "otp_hash" TYPE VARCHAR(200)'
+                    )
+                )
+
     with engine.begin() as connection:
         connection.execute(
             text(

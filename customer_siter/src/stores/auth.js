@@ -4,10 +4,12 @@ import { customerAuth } from '../services/customerAuth'
 
 export const useAuthStore = defineStore('auth', () => {
   const customer = ref(null)
+  const pendingEmail = ref('')
   const loading = ref(false)
   const error = ref('')
 
   function initialize() {
+    pendingEmail.value = customerAuth.getPendingEmail()
     if (customerAuth.isAuthenticated()) {
       customer.value = customerAuth.getCustomer()
     }
@@ -17,8 +19,37 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     error.value = ''
     try {
-      customer.value = await customerAuth.register(data)
+      const registration = await customerAuth.register(data)
+      pendingEmail.value = registration.email
+      return registration
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function verifyRegistration(otp) {
+    loading.value = true
+    error.value = ''
+    try {
+      customer.value = await customerAuth.verifyRegistration(otp)
+      pendingEmail.value = ''
       return customer.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function resendRegistrationCode() {
+    loading.value = true
+    error.value = ''
+    try {
+      return await customerAuth.resendRegistrationCode()
     } catch (err) {
       error.value = err.message
       throw err
@@ -84,10 +115,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     customer,
+    pendingEmail,
     loading,
     error,
     initialize,
     register,
+    verifyRegistration,
+    resendRegistrationCode,
     login,
     logout,
     refreshProfile,

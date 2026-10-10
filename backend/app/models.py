@@ -362,6 +362,33 @@ class Customer(SQLModel, table=True):
     )
 
 
+class CustomerRegistration(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(max_length=120)
+    email: str = Field(
+        sa_column=Column(String(254), nullable=False, unique=True, index=True),
+    )
+    phone: str = Field(default="", max_length=30)
+    passwordHash: str = Field(
+        sa_column=Column("password_hash", String(200), nullable=False),
+    )
+    otpHash: str = Field(
+        sa_column=Column("otp_hash", String(200), nullable=False),
+    )
+    expiresAt: datetime = Field(
+        sa_column=Column("expires_at", DateTime(timezone=True), nullable=False),
+    )
+    attempts: int = Field(default=0, sa_column=Column(Integer, nullable=False, default=0))
+    lastSentAt: datetime | None = Field(
+        default=None,
+        sa_column=Column("last_sent_at", DateTime(timezone=True), nullable=True),
+    )
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+
 class CustomerAddress(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     tenantId: int = Field(

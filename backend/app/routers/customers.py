@@ -1,17 +1,23 @@
-from datetime import datetime, timezone, timedelta
+import secrets
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.auth import (
     create_customer_session,
-    customer_response,
     get_current_customer,
     hash_password,
     verify_password,
 )
 from app.database import get_session
-from app.models import Customer, CustomerAddress, CustomerSession
+from app.email import (
+    send_customer_registration_confirmation,
+    send_customer_registration_otp,
+)
+from app.models import Customer, CustomerAddress, CustomerRegistration, CustomerSession
 from app.schemas import (
     CustomerAddressCreate,
     CustomerAddressRead,
@@ -20,45 +26,239 @@ from app.schemas import (
     CustomerOrderRead,
     CustomerRead,
     CustomerRegister,
+    CustomerRegistrationEmail,
+    CustomerRegistrationStarted,
+    CustomerRegistrationVerify,
     CustomerSessionRead,
     CustomerUpdate,
 )
 
 router = APIRouter(prefix="/customers", tags=["customers"])
+REGISTRATION_OTP_LIFETIME = timedelta(minutes=10)
+REGISTRATION_OTP_RESEND_DELAY = timedelta(seconds=60)
+REGISTRATION_OTP_MAX_ATTEMPTS = 5
 
 
-@router.post("/register", response_model=CustomerSessionRead, status_code=status.HTTP_201_CREATED)
+def _registration_otp_hash(otp: str) -> str:
+    return hash_password(otp)
+
+
+def _lock_customer_registration(session: Session, email: str) -> None:
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:email, 0))"),
+        {"email": email},
+    )
+
+
+@router.post(
+    "/register",
+    response_model=CustomerRegistrationStarted,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 def register_customer(
     customer_data: CustomerRegister,
     session: Session = Depends(get_session),
-) -> CustomerSession:
+) -> CustomerRegistrationStarted:
+    _lock_customer_registration(session, customer_data.email)
+
     existing = session.exec(
         select(Customer).where(Customer.email == customer_data.email)
     ).first()
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    customer = Customer(
-        name=customer_data.name,
+    registration = session.exec(
+        select(CustomerRegistration).where(
+            CustomerRegistration.email == customer_data.email
+        )
+    ).first()
+    now = datetime.now(timezone.utc)
+    if registration and registration.lastSentAt:
+        last_sent_at = registration.lastSentAt
+        if last_sent_at.tzinfo is None:
+            last_sent_at = last_sent_at.replace(tzinfo=timezone.utc)
+        if now - last_sent_at < REGISTRATION_OTP_RESEND_DELAY:
+            raise HTTPException(
+                status_code=429,
+                detail="A verification code was just sent. Please wait before requesting another.",
+            )
+
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    if not send_customer_registration_otp(
+        customer_data.email,
+        customer_data.name,
+        otp,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="We could not send your verification code. Please try again later.",
+        )
+
+    password_hash = hash_password(customer_data.password)
+    otp_hash = _registration_otp_hash(otp)
+    if registration is None:
+        registration = CustomerRegistration(
+            name=customer_data.name,
+            email=customer_data.email,
+            phone=customer_data.phone,
+            passwordHash=password_hash,
+            otpHash=otp_hash,
+            expiresAt=now + REGISTRATION_OTP_LIFETIME,
+            lastSentAt=now,
+        )
+    else:
+        registration.name = customer_data.name
+        registration.phone = customer_data.phone
+        registration.passwordHash = password_hash
+        registration.otpHash = otp_hash
+        registration.expiresAt = now + REGISTRATION_OTP_LIFETIME
+        registration.attempts = 0
+        registration.lastSentAt = now
+
+    session.add(registration)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        registration = session.exec(
+            select(CustomerRegistration).where(
+                CustomerRegistration.email == customer_data.email
+            )
+        ).first()
+        if registration is None:
+            raise
+
+        registration.name = customer_data.name
+        registration.phone = customer_data.phone
+        registration.passwordHash = password_hash
+        registration.otpHash = otp_hash
+        registration.expiresAt = now + REGISTRATION_OTP_LIFETIME
+        registration.attempts = 0
+        registration.lastSentAt = now
+        session.add(registration)
+        session.commit()
+
+    return CustomerRegistrationStarted(
         email=customer_data.email,
-        phone=customer_data.phone,
-        passwordHash=hash_password(customer_data.password),
+        message="Verification code sent to your email.",
+    )
+
+
+@router.post("/register/verify", response_model=CustomerSessionRead)
+def verify_customer_registration(
+    verify_data: CustomerRegistrationVerify,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+) -> CustomerSessionRead:
+    registration = session.exec(
+        select(CustomerRegistration).where(
+            CustomerRegistration.email == verify_data.email
+        )
+    ).first()
+    if registration is None:
+        raise HTTPException(status_code=404, detail="No pending registration was found")
+
+    now = datetime.now(timezone.utc)
+    expires_at = registration.expiresAt
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= now:
+        raise HTTPException(status_code=400, detail="Verification code expired. Request a new code.")
+    if registration.attempts >= REGISTRATION_OTP_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many attempts. Request a new code.")
+
+    if not verify_password(verify_data.otp, registration.otpHash):
+        registration.attempts += 1
+        session.add(registration)
+        session.commit()
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    existing = session.exec(
+        select(Customer).where(Customer.email == registration.email)
+    ).first()
+    if existing:
+        session.delete(registration)
+        session.commit()
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    customer = Customer(
+        name=registration.name,
+        email=registration.email,
+        phone=registration.phone,
+        passwordHash=registration.passwordHash,
         status="active",
     )
     session.add(customer)
+    session.delete(registration)
     session.commit()
     session.refresh(customer)
 
-    token, expires_at = create_customer_session(session, customer)
+    token, token_expires_at = create_customer_session(session, customer)
     session.commit()
     session.refresh(customer)
+    background_tasks.add_task(
+        send_customer_registration_confirmation,
+        customer.email,
+        customer.name,
+    )
 
     return CustomerSessionRead(
         accessToken=token,
         tokenType="bearer",
-        expiresAt=expires_at,
+        expiresAt=token_expires_at,
         customer=CustomerRead.model_validate(customer),
     )
+
+
+@router.post("/register/resend", response_model=CustomerRegistrationStarted)
+def resend_customer_registration_otp(
+    request_data: CustomerRegistrationEmail,
+    session: Session = Depends(get_session),
+) -> CustomerRegistrationStarted:
+    _lock_customer_registration(session, request_data.email)
+
+    registration = session.exec(
+        select(CustomerRegistration).where(
+            CustomerRegistration.email == request_data.email
+        )
+    ).first()
+    if registration is None:
+        raise HTTPException(status_code=404, detail="No pending registration was found")
+
+    now = datetime.now(timezone.utc)
+    if registration.lastSentAt:
+        last_sent_at = registration.lastSentAt
+        if last_sent_at.tzinfo is None:
+            last_sent_at = last_sent_at.replace(tzinfo=timezone.utc)
+        if now - last_sent_at < REGISTRATION_OTP_RESEND_DELAY:
+            raise HTTPException(
+                status_code=429,
+                detail="Please wait 60 seconds between verification code requests.",
+            )
+
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    if not send_customer_registration_otp(
+        registration.email,
+        registration.name,
+        otp,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="We could not send your verification code. Please try again later.",
+        )
+
+    registration.otpHash = _registration_otp_hash(otp)
+    registration.expiresAt = now + REGISTRATION_OTP_LIFETIME
+    registration.attempts = 0
+    registration.lastSentAt = now
+    session.add(registration)
+    session.commit()
+    return CustomerRegistrationStarted(
+        email=registration.email,
+        message="A new verification code was sent to your email.",
+    )
+
+
 
 
 @router.post("/login", response_model=CustomerSessionRead)

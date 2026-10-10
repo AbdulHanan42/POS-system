@@ -8,6 +8,7 @@ const router = createRouter({
     { path: '/track/:orderId', name: 'track-order', component: () => import('../views/TrackOrder.vue') },
     { path: '/login', name: 'login', component: () => import('../views/Login.vue') },
     { path: '/register', name: 'register', component: () => import('../views/Register.vue') },
+    { path: '/verify-email', name: 'verify-registration', component: () => import('../views/VerifyRegistration.vue') },
     {
       path: '/profile',
       name: 'profile',
@@ -26,7 +27,7 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth && !auth.customer) {
     next({ name: 'login', query: { redirect: to.fullPath } })
-  } else if ((to.name === 'login' || to.name === 'register') && auth.customer) {
+  } else if ((to.name === 'login' || to.name === 'register' || to.name === 'verify-registration') && auth.customer) {
     next({ name: 'home' })
   } else {
     next()

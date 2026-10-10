@@ -2,6 +2,7 @@ const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const TOKEN_KEY = 'restaurant_customer.accessToken'
 const CUSTOMER_KEY = 'restaurant_customer.data'
+const PENDING_EMAIL_KEY = 'restaurant_customer.pendingEmail'
 
 async function readResponse(response) {
   const body = await response.json().catch(() => ({}))
@@ -33,15 +34,46 @@ export const customerAuth = {
     return !!this.getToken()
   },
 
+  getPendingEmail() {
+    return sessionStorage.getItem(PENDING_EMAIL_KEY) || ''
+  },
+
   async register(data) {
     const response = await fetch(`${apiBase}/customers/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
+    const registration = await readResponse(response)
+    sessionStorage.setItem(PENDING_EMAIL_KEY, registration.email)
+    return registration
+  },
+
+  async verifyRegistration(otp) {
+    const email = this.getPendingEmail()
+    if (!email) throw new Error('Start registration again to request a verification code.')
+
+    const response = await fetch(`${apiBase}/customers/register/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    })
     const session = await readResponse(response)
     this.setSession(session)
+    sessionStorage.removeItem(PENDING_EMAIL_KEY)
     return session.customer
+  },
+
+  async resendRegistrationCode() {
+    const email = this.getPendingEmail()
+    if (!email) throw new Error('Start registration again to request a verification code.')
+
+    const response = await fetch(`${apiBase}/customers/register/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    return readResponse(response)
   },
 
   async login(credentials) {

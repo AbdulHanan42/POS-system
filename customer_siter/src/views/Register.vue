@@ -34,7 +34,7 @@ async function handleRegister() {
       phone: phone.value,
       password: password.value,
     });
-    router.push("/");
+    router.push({ name: "verify-registration" });
   } catch (err) {
     error.value = err.message || "Registration failed. Please try again.";
   }
