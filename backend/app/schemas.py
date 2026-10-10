@@ -475,6 +475,7 @@ class PublicOrderConfirmation(BaseModel):
 
 
 class PublicSiteRead(BaseModel):
+    tenantSlug: str
     restaurantName: str
     phone: str
     address: str

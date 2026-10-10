@@ -1,15 +1,22 @@
 const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 import { customerAuth } from './customerAuth'
 
+let resolvedTenantSlug = ''
+
 export function tenantSlug() {
   return new URLSearchParams(window.location.search).get('tenant')
     || import.meta.env.VITE_RESTAURANT_SLUG
-    || 'legacy-workspace'
+    || resolvedTenantSlug
+}
+
+export function setTenantSlug(slug) {
+  resolvedTenantSlug = slug || ''
 }
 
 function publicUrl(path) {
   const url = new URL(`${apiBase}/public/${path}`, window.location.origin)
-  url.searchParams.set('tenant', tenantSlug())
+  const slug = tenantSlug()
+  if (slug) url.searchParams.set('tenant', slug)
   return url
 }
 
@@ -47,7 +54,8 @@ export const publicApi = {
   },
   orderEventsUrl(orderId) {
     const url = new URL(`${apiBase}/ws/public/orders/${encodeURIComponent(orderId)}`, window.location.origin)
-    url.searchParams.set('tenant', tenantSlug())
+    const slug = tenantSlug()
+    if (slug) url.searchParams.set('tenant', slug)
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
     return url.toString()
   },

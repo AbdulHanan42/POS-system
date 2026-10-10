@@ -1,4 +1,5 @@
 from decimal import Decimal
+import os
 import secrets
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
@@ -7,7 +8,8 @@ from sqlmodel import Session, select
 from app.auth import get_optional_current_customer
 from app.database import get_session
 from app.event_hub import order_events
-from app.models import Customer, DeliveryZone, Order, Product, RestaurantSettings, Tenant
+from app.inventory import apply_inventory_movement
+from app.models import Customer, DeliveryZone, InventoryStock, Order, Product, RestaurantSettings, Tenant
 from app.schemas import (
     DeliveryZoneRead,
     ProductRead,
@@ -21,13 +23,21 @@ router = APIRouter(prefix="/public", tags=["public ordering"])
 
 
 def public_session(
-    tenant: str = Query(default="legacy-workspace", min_length=1, max_length=100),
+    tenant: str | None = Query(default=None, min_length=1, max_length=100),
     session: Session = Depends(get_session),
 ) -> Session:
-    workspace = session.exec(select(Tenant).where(Tenant.slug == tenant)).first()
+    tenant_slug = (tenant or os.getenv("PUBLIC_STOREFRONT_SLUG") or "").strip()
+    if not tenant_slug:
+        raise HTTPException(
+            status_code=503,
+            detail="The public storefront is not configured. Set PUBLIC_STOREFRONT_SLUG or provide a tenant slug.",
+        )
+
+    workspace = session.exec(select(Tenant).where(Tenant.slug == tenant_slug)).first()
     if workspace is None:
         raise HTTPException(status_code=404, detail="Restaurant not found")
     session.info["tenant_id"] = workspace.id
+    session.info["tenant_slug"] = workspace.slug
     return session
 
 
@@ -36,7 +46,9 @@ def public_menu(session: Session = Depends(public_session)) -> list[Product]:
     return list(
         session.exec(
             select(Product)
+            .join(InventoryStock, InventoryStock.productId == Product.id)
             .where(Product.status == "active")
+            .where(InventoryStock.quantity > 0)
             .order_by(Product.category, Product.name)
         ).all()
     )
@@ -50,6 +62,7 @@ def public_site(session: Session = Depends(public_session)) -> PublicSiteRead:
             restaurantName="Restaurant", phone="", address="", publicDescription="",
             logoUrl="", heroImageUrl="", openingHours="", websiteEnabled=True,
             orderingOpen=True, taxRate=Decimal("0.1000"),
+            tenantSlug=session.info["tenant_slug"],
         )
     return PublicSiteRead(
         restaurantName=settings.restaurantName,
@@ -62,6 +75,7 @@ def public_site(session: Session = Depends(public_session)) -> PublicSiteRead:
         websiteEnabled=settings.websiteEnabled,
         orderingOpen=settings.orderingOpen,
         taxRate=settings.taxRate,
+        tenantSlug=session.info["tenant_slug"],
     )
 
 
@@ -102,10 +116,14 @@ def create_public_order(
 
     subtotal = Decimal("0.00")
     safe_items = []
+    products: dict[int, Product] = {}
+    ordered_quantities: dict[int, int] = {}
     for item in order_data.items:
         product = session.get(Product, item.productId) if item.productId is not None else None
         if product is None or product.status != "active":
             raise HTTPException(status_code=422, detail="One of the selected dishes is unavailable")
+        products[product.id] = product
+        ordered_quantities[product.id] = ordered_quantities.get(product.id, 0) + item.quantity
         price = product.price
         selected_size = item.selectedSize
         if product.prices:
@@ -155,6 +173,15 @@ def create_public_order(
         deliveryNotes=order_data.deliveryNotes,
     )
     session.add(order)
+    session.flush()
+    for product_id, quantity in ordered_quantities.items():
+        apply_inventory_movement(
+            session,
+            products[product_id],
+            "sale",
+            quantity,
+            f"Website order #{order.id}",
+        )
     session.commit()
     session.refresh(order)
     background_tasks.add_task(order_events.order_created, order.tenantId, order.id, order.source)

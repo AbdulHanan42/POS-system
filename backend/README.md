@@ -17,6 +17,7 @@ SMTP_USE_SSL=false
 CUSTOMER_SITE_URL=http://localhost:5174
 RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL=orders@example.com
+PUBLIC_STOREFRONT_SLUG=legacy-workspace
 ```
 
 Set your SMTP server credentials and sender in `backend/.env`. Port 587 uses
@@ -26,6 +27,12 @@ Customer registration sends a six-digit code that expires after 10 minutes; code
 can be resent once per minute and verification is limited to five attempts. The
 account and sign-in session are created only after the code is verified, then a
 confirmation email is sent.
+
+Public storefront requests are scoped by the `tenant` slug query parameter. Set
+`PUBLIC_STOREFRONT_SLUG` as the server-side default for public clients that do not
+provide a slug; POS preview links always provide their authenticated workspace's
+slug. If neither is configured, public endpoints return a configuration error
+instead of silently serving another workspace.
 
 Create the `pos_system` database in PostgreSQL if it does not exist, then install and run the backend from `backend/`:
 

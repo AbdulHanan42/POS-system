@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   ArrowRight,
   Check,
@@ -13,13 +13,15 @@ import {
   X,
 } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
-import { publicApi, tenantSlug } from "../services/publicApi";
+import { publicApi, setTenantSlug, tenantSlug } from "../services/publicApi";
 import { useCartStore } from "../stores/cart";
 import { useAuthStore } from "../stores/auth";
 import { customerAuth } from "../services/customerAuth";
 
-const route = useRoute();
+defineOptions({ name: "CustomerStorefrontHome" });
+
 const router = useRouter();
+const route = useRoute();
 const cart = useCartStore();
 const auth = useAuthStore();
 const site = ref({
@@ -44,9 +46,24 @@ const checkoutOpen = ref(false);
 const loading = ref(true);
 const submitting = ref(false);
 const error = ref("");
+const menuRefreshError = ref("");
 const savedAddresses = ref([]);
 const selectedAddress = ref(null);
 const customer = ref({ name: "", phone: "", address: "", zone: "", notes: "" });
+let menuRefreshTimer;
+
+async function refreshMenu() {
+  if (!tenantSlug()) return;
+  try {
+    menu.value = await publicApi.getMenu();
+    menuRefreshError.value = "";
+    if (activeCategory.value !== "All" && !menu.value.some((product) => product.category === activeCategory.value)) {
+      activeCategory.value = "All";
+    }
+  } catch (cause) {
+    menuRefreshError.value = cause.message;
+  }
+}
 
 // Pre-fill customer data if logged in
 function updateCustomerFromAuth() {
@@ -121,10 +138,18 @@ function priceFor(product) {
 async function loadStorefront() {
   loading.value = true;
   error.value = "";
-  cart.initialize(tenantSlug(), auth.customer?.id ?? null);
+  menuRefreshError.value = "";
   try {
-    const [siteData, menuData, zoneData] = await Promise.all([
-      publicApi.getSite(),
+    const siteData = await publicApi.getSite();
+    setTenantSlug(siteData.tenantSlug);
+    cart.initialize(siteData.tenantSlug, auth.customer?.id ?? null);
+    if (!route.query.tenant) {
+      await router.replace({
+        query: { ...route.query, tenant: siteData.tenantSlug },
+      });
+    }
+
+    const [menuData, zoneData] = await Promise.all([
       publicApi.getMenu(),
       publicApi.getDeliveryZones(),
     ]);
@@ -202,6 +227,13 @@ onMounted(() => {
   updateCustomerFromAuth();
   loadStorefront();
   loadSavedAddresses();
+  menuRefreshTimer = window.setInterval(refreshMenu, 30000);
+  window.addEventListener("focus", refreshMenu);
+});
+
+onUnmounted(() => {
+  window.clearInterval(menuRefreshTimer);
+  window.removeEventListener("focus", refreshMenu);
 });
 </script>
 
@@ -373,6 +405,10 @@ onMounted(() => {
             {{ category }}
           </button>
         </div>
+        <p v-if="menuRefreshError" class="mt-4 text-sm text-red-800" role="alert">
+          {{ menuRefreshError }}
+          <button class="ml-2 underline" type="button" @click="refreshMenu">Retry</button>
+        </p>
         <p
           v-if="loading"
           class="py-16 text-center text-sm text-[var(--muted)]"
@@ -390,6 +426,12 @@ onMounted(() => {
             Try again
           </button>
         </div>
+        <p
+          v-else-if="!menu.length"
+          class="py-16 text-center text-sm text-[var(--muted)]"
+        >
+          No products are currently available from this restaurant.
+        </p>
         <p
           v-else-if="!visibleMenu.length"
           class="py-16 text-center text-sm text-[var(--muted)]"

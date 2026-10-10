@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-The dev server runs on `http://127.0.0.1:5174` and proxies `/api` and WebSocket traffic to FastAPI. The default restaurant is `legacy-workspace`; set `VITE_RESTAURANT_SLUG` in `.env.local` or pass `?tenant=your-tenant-slug` to choose another tenant.
+The dev server runs on `http://localhost:5174` and proxies `/api` and WebSocket traffic to FastAPI. Set `VITE_RESTAURANT_SLUG` in `.env.local` to choose the public default restaurant for direct visits. The POS preview link supplies `?tenant=<workspace-slug>` and overrides that default. The public slug is not an admin credential; never pass a POS access token to the customer site.
 
 Set `VITE_API_BASE_URL` only when the deployed API is on a different origin. Configure that origin in the backend CORS policy for REST requests.
 
