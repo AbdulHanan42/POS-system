@@ -200,6 +200,7 @@ class AuthUserRead(BaseModel):
     id: int
     tenantId: int
     tenantName: str
+    tenantSlug: str
     name: str
     email: str
     role: Literal["Administrator", "Manager", "Cashier", "Chef", "Waiter"]

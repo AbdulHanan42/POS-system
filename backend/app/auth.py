@@ -106,6 +106,7 @@ def user_response(user: UserAccount, tenant: Tenant) -> dict:
         "id": user.id,
         "tenantId": user.tenantId,
         "tenantName": tenant.name,
+        "tenantSlug": tenant.slug,
         "name": user.name,
         "email": user.email,
         "role": user.role,

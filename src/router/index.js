@@ -56,6 +56,7 @@ const router = createRouter({
     { path: '/reset-password', meta: { public: true, layout: 'auth' }, name: 'reset-password', component: () => import('../views/auth/ResetPassword.vue') },
     { path: '/delivery', meta: { permission: 'orders:read' }, component: () => import('../views/delivery/DeliveryDashboard.vue') },
     { path: '/settings', meta: { permission: routePermissions.settings }, component: () => import('../views/settings/GeneralSettings.vue') },
+    { path: '/customer-website', meta: { permission: '*' }, component: () => import('../views/settings/CustomerWebsite.vue') },
   ],
 })
 

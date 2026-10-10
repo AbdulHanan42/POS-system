@@ -89,6 +89,10 @@ async function signOut() {
         <span class="nav-icon" aria-hidden="true">SE</span>
         <span>Settings</span>
       </RouterLink>
+      <RouterLink v-if="auth.can('*')" class="nav-item" to="/customer-website">
+        <span class="nav-icon" aria-hidden="true">WB</span>
+        <span>Customer website</span>
+      </RouterLink>
     </nav>
 
     <div class="sidebar-footer">

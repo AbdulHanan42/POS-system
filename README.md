@@ -37,6 +37,16 @@ npm run dev
 npm run build
 ```
 
+### Customer Website Admin
+
+Workspace administrators and managers can open **Customer website** in the POS
+sidebar to manage storefront availability and the tenant's published products.
+Product edits and deletions use the existing menu management flow. Customer
+storefront links include the workspace slug as `?tenant=<slug>`; set
+`VITE_CUSTOMER_SITE_URL` in the POS environment to the deployed customer-site base
+URL when it is hosted separately. The customer website defaults to
+`legacy-workspace` when no tenant slug is supplied.
+
 ### Run Unit Tests with [Vitest](https://vitest.dev/)
 
 ```sh
